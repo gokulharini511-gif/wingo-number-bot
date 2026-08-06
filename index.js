@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S Pure Trend Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Ultra Dynamic Trend Bot Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -57,64 +57,70 @@ function getBetVal(level) {
   return levelData[level] ? levelData[level].val : 2;
 }
 
-// 100% Pure Trend-Based Prediction Engine
+// ULTRA-DYNAMIC TREND PREDICTION ENGINE
 function advancedPatternEngine(history, currentLevel) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-    if (numbers.length < 15) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
+    if (numbers.length < 15) return { targetNumbers: [1, 6], numbersStr: "1, 6" };
 
     let scores = {};
     for (let i = 0; i <= 9; i++) scores[i] = 0;
 
-    let recent10 = numbers.slice(0, 10);
+    let recent15 = numbers.slice(0, 15);
     let last1 = numbers[0];
     let last2 = numbers[1];
+    let last3 = numbers[2];
 
-    // 1. PARITY TREND (ODD / EVEN STREAK)
-    let isOddStreak = recent10.slice(0, 3).every(n => n % 2 !== 0);
-    let isEvenStreak = recent10.slice(0, 3).every(n => n % 2 === 0);
+    // 1. DYNAMIC HOT NUMBERS (சமீபத்தில் அதிகம் வந்த எண்கள்)
+    recent15.forEach(num => {
+      if (num >= 0 && num <= 9) scores[num] += 3;
+    });
 
-    if (isOddStreak) {
-      [1, 3, 5, 7, 9].forEach(n => scores[n] += 30);
-    } else if (isEvenStreak) {
-      [0, 2, 4, 6, 8].forEach(n => scores[n] += 30);
+    // 2. PARITY MOMENTUM (Odd / Even Trend)
+    let oddCount = recent15.slice(0, 5).filter(n => n % 2 !== 0).length;
+    if (oddCount >= 4) {
+      [1, 3, 5, 7, 9].forEach(n => scores[n] += 18);
+    } else if (oddCount <= 1) {
+      [0, 2, 4, 6, 8].forEach(n => scores[n] += 18);
     }
 
-    // 2. ALTERNATING TREND (ZIG-ZAG PATTERN)
-    let isAlternating = true;
-    for (let i = 0; i < 4; i++) {
-      if ((recent10[i] % 2) === (recent10[i + 1] % 2)) {
-        isAlternating = false;
-        break;
-      }
-    }
+    // 3. ZIG-ZAG ALTERNATING TREND
+    let isAlternating = (last1 % 2 !== last2 % 2) && (last2 % 2 !== last3 % 2);
     if (isAlternating) {
       let expectedParity = (last1 % 2 === 0) ? 1 : 0;
       for (let i = 0; i <= 9; i++) {
-        if (i % 2 === expectedParity) scores[i] += 25;
+        if (i % 2 === expectedParity) scores[i] += 22;
       }
     }
 
-    // 3. SIZE TREND (HIGH / LOW ZONE MOMENTUM)
-    let highCount = recent10.filter(n => n >= 5).length;
-    let lowCount = recent10.length - highCount;
-
-    if (highCount >= 7) {
-      [5, 6, 7, 8, 9].forEach(n => scores[n] += 20);
-    } else if (lowCount >= 7) {
-      [0, 1, 2, 3, 4].forEach(n => scores[n] += 20);
+    // 4. BIG / SMALL ZONE STREAK
+    let highZoneCount = recent15.slice(0, 6).filter(n => n >= 5).length;
+    if (highZoneCount >= 4) {
+      [5, 6, 7, 8, 9].forEach(n => scores[n] += 15);
+    } else if (highZoneCount <= 2) {
+      [0, 1, 2, 3, 4].forEach(n => scores[n] += 15);
     }
 
-    // 4. MIRROR REPEAT TREND
+    // 5. ADJACENT STEP TREND (+1 / -1 Shift)
+    let nextStep1 = (last1 + 1) % 10;
+    let nextStep2 = (last1 + 9) % 10;
+    scores[nextStep1] += 12;
+    scores[nextStep2] += 12;
+
+    // 6. MIRROR TREND SHIFT
     let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-    if (last1 !== undefined && mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 15;
-    if (last2 !== undefined && mirrorMap[last2] !== undefined) scores[mirrorMap[last2]] += 10;
+    if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 14;
 
-    // 5. HIGH LEVEL SAFETY FILTER (Level 3+)
+    // 7. LEVEL SAFETY RECOVERY FILTER (Level 3+)
     if (currentLevel >= 3) {
-      let safeTrend = (last1 + 5) % 10;
-      scores[safeTrend] += 35;
+      let shiftTarget = (last1 + 3) % 10;
+      let shiftTarget2 = (last1 + 7) % 10;
+      scores[shiftTarget] += 25;
+      scores[shiftTarget2] += 25;
     }
+
+    // DIRECT REPEAT PENALTY (ஒரே எண் மீண்டும் வருவதைக் குறைக்கும்)
+    scores[last1] -= 8;
 
     let sortedNumbers = Object.keys(scores)
       .map(Number)
@@ -123,7 +129,7 @@ function advancedPatternEngine(history, currentLevel) {
     let matchedNumbers = sortedNumbers.slice(0, 2);
     return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
   } catch (e) {
-    return { targetNumbers: [2, 7], numbersStr: "2, 7" };
+    return { targetNumbers: [3, 8], numbersStr: "3, 8" };
   }
 }
 
