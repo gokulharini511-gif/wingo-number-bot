@@ -48,7 +48,6 @@ function getBetVal(level) {
   return levelData[level] ? levelData[level].val : Math.pow(3, level - 1) * 5;
 }
 
-// 🎯 5 எண்கள் தேர்வு செய்யும் மேம்படுத்தப்பட்ட அல்காரிதம் (50% Win Rate)
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -74,7 +73,6 @@ function advancedPatternEngine(history) {
       .map(Number)
       .sort((a, b) => nextNumberScores[b] - nextNumberScores[a]);
 
-    // அதிக வாய்ப்புள்ள 5 எண்கள் தேர்வு
     let matchedNumbers = sortedNumbers.slice(0, 5);
     return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
   } catch (e) {
@@ -133,7 +131,7 @@ async function fetchWinGoData() {
     if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
       let isNumberHit = lastPredictedNumbers.includes(actualNum);
       let currentLevelExecuted = maintenanceLevel;
-      let currentBetVal = getBetVal(currentLevelExecuted); // 5 எண்களுக்கான முதலீடு
+      let currentBetVal = getBetVal(currentLevelExecuted);
 
       predictionCount++;
 
@@ -141,7 +139,6 @@ async function fetchWinGoData() {
         totalWins++;
         levelWins[currentLevelExecuted] = (levelWins[currentLevelExecuted] || 0) + 1;
         
-        // 5 எண்களில் 1 எண் ஜெயித்தால் 9 மடங்கு Return. (நிகர லாபம் = முதலீடு * 4)
         let unitBet = currentBetVal / 5;
         let winProfit = unitBet * 4; 
         totalProfitLoss += winProfit;
