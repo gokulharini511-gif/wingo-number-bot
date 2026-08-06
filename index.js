@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S 10-Level Smart Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Smart Bot Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -40,7 +40,7 @@ let isCoolingDown = false;
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
 
-// 🎯 Loss Recovery Based Level Bet Values (2 Numbers Total Bet)
+// Level Bet Values
 const levelData = {
   1: { val: 2 },
   2: { val: 4 },
@@ -58,6 +58,7 @@ function getBetVal(level) {
   return levelData[level] ? levelData[level].val : 2;
 }
 
+// Advanced Multi-Pattern Accuracy Engine
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -70,27 +71,42 @@ function advancedPatternEngine(history) {
     let last2 = numbers[1];
     let last3 = numbers[2];
 
+    // 1. Mirror Strategy
     let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
     scores[mirrorMap[last1]] += 20;
 
+    // 2. 3-Round Matrix Matching
     let patternSeq = `${last3},${last2},${last1}`;
     for (let i = 3; i < numbers.length - 1; i++) {
       let currentSeq = `${numbers[i+1]},${numbers[i]},${numbers[i-1]}`;
       if (patternSeq === currentSeq) {
-        scores[numbers[i-2]] += 25;
+        scores[numbers[i-2]] += 30;
       }
     }
 
+    // 3. Hot Frequency Scoring (Last 50)
     let recent50 = numbers.slice(0, 50);
     recent50.forEach(num => {
-      if (num >= 0 && num <= 9) scores[num] += 0.5;
+      if (num >= 0 && num <= 9) scores[num] += 0.8;
     });
 
+    // 4. Cold Numbers Boost (Last 15)
     let recent15 = numbers.slice(0, 15);
     for (let i = 0; i <= 9; i++) {
-      if (!recent15.includes(i)) scores[i] += 12;
+      if (!recent15.includes(i)) scores[i] += 15;
     }
 
+    // 5. Odd/Even Trend Adjustment
+    let recent5 = numbers.slice(0, 5);
+    let evenCount = recent5.filter(n => n % 2 === 0).length;
+    let oddCount = 5 - evenCount;
+
+    for (let i = 0; i <= 9; i++) {
+      if (evenCount >= 4 && i % 2 !== 0) scores[i] += 10; 
+      if (oddCount >= 4 && i % 2 === 0) scores[i] += 10;
+    }
+
+    // Avoid immediate repetition
     scores[last1] -= 15;
 
     let sortedNumbers = Object.keys(scores)
@@ -169,24 +185,23 @@ async function fetchWinGoData() {
         let winProfit = (singleBet * 9) - currentBetVal; 
         totalProfitLoss += winProfit;
 
-        lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN (+₹" + winProfit.toFixed(1) + ")\n🎯 **WINNER: (" + actualNum + ") 🎉 JACKPOT!**";
+        lastWinLevelMsg = "=== CONGRATULATIONS ===\nLEVEL " + currentLevelExecuted + " WIN (+RS " + winProfit.toFixed(1) + ")\nWINNER: (" + actualNum + ")\n=== CONGRATULATIONS ===";
         maintenanceLevel = 1; 
       } else {
         totalLosses++;
         totalProfitLoss -= currentBetVal;
         
-        lastWinLevelMsg = "Level " + currentLevelExecuted + " LOSS (-₹" + currentBetVal + ")\n❌ **RESULT: (" + actualNum + ")**";
+        lastWinLevelMsg = "LEVEL " + currentLevelExecuted + " LOSS (-RS " + currentBetVal + ")\nRESULT: (" + actualNum + ")";
         
-        // 🛑 Level 10 Trigger & 1-Min Cooling Period Logic
         if (maintenanceLevel >= 10) {
           maintenanceLevel = 1; 
           isCoolingDown = true;
-          lastWinLevelMsg += "\n\n⚠️ **LEVEL 10 REACHED! BOT IN COOLING PAUSE (1 MIN)...**";
+          lastWinLevelMsg += "\n\nLEVEL 10 REACHED! BOT IN COOLING PAUSE (1 MIN)...";
           
           setTimeout(() => {
             isCoolingDown = false;
-            broadcastMessage("✅ **COOLING PERIOD COMPLETED. RESUMING PREDICTIONS FROM LEVEL 1!**");
-          }, 60000); // 1 min delay
+            broadcastMessage("COOLING PERIOD COMPLETED. RESUMING PREDICTIONS FROM LEVEL 1.");
+          }, 60000);
         } else {
           maintenanceLevel++; 
         }
@@ -195,17 +210,17 @@ async function fetchWinGoData() {
       if (predictionCount % 60 === 0) {
         let levelReport = "";
         for (let lvl in levelWins) {
-          if (levelWins[lvl] > 0) levelReport += `• **Level ${lvl} Wins:** ${levelWins[lvl]}\n`;
+          if (levelWins[lvl] > 0) levelReport += `• Level ${lvl} Wins: ${levelWins[lvl]}\n`;
         }
 
-        let reportMsg = "📊 **60 PREDICTIONS SUMMARY REPORT** 📊\n" +
-          "━━━━━━━━━━━━━━━━━━━━━\n" +
-          "• **TOTAL ROUNDS:** " + predictionCount + "\n" +
-          "• **TOTAL WINS:** " + totalWins + "\n" +
-          "• **TOTAL LOSSES:** " + totalLosses + "\n" +
-          "• **OVERALL PROFIT/LOSS:** " + (totalProfitLoss >= 0 ? "+₹" : "-₹") + Math.abs(totalProfitLoss).toFixed(2) + "\n" +
-          "━━━━━━━━━━━━━━━━━━━━━\n" +
-          "📈 **LEVEL WINS STATS:**\n" + levelReport;
+        let reportMsg = "60 PREDICTIONS SUMMARY REPORT\n" +
+          "--------------------\n" +
+          "TOTAL ROUNDS: " + predictionCount + "\n" +
+          "TOTAL WINS: " + totalWins + "\n" +
+          "TOTAL LOSSES: " + totalLosses + "\n" +
+          "OVERALL PROFIT/LOSS: " + (totalProfitLoss >= 0 ? "+RS " : "-RS ") + Math.abs(totalProfitLoss).toFixed(2) + "\n" +
+          "--------------------\n" +
+          "LEVEL WINS STATS:\n" + levelReport;
 
         await broadcastMessage(reportMsg);
       }
@@ -213,16 +228,16 @@ async function fetchWinGoData() {
 
     if (nextPeriod !== lastSentPeriod && !isCoolingDown) {
       let pred = advancedPatternEngine(list);
-      let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+      let profitSign = totalProfitLoss >= 0 ? "+RS " + totalProfitLoss.toFixed(2) : "-RS " + Math.abs(totalProfitLoss).toFixed(2);
       let currentBet = getBetVal(maintenanceLevel);
 
-      let msg = "👑 **PURE 2-NUMBER SMART PREDICTION** 👑\n\n" +
+      let msg = "PURE 2-NUMBER PREDICTION\n\n" +
         "PERIOD: `" + nextPeriod + "`\n" +
         "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
-        "👉 **BET LEVEL " + maintenanceLevel + ":** `₹" + currentBet + " (₹" + (currentBet/2) + " each)`\n" +
+        "LEVEL " + maintenanceLevel + ": RS " + currentBet + " (RS " + (currentBet/2) + " EACH)\n" +
         "WINS: " + totalWins + " | LOSSES: " + totalLosses + "\n\n" +
-        "LAST RESULT: " + lastWinLevelMsg + "\n" +
-        "💰 **OVERALL PROFIT:** `" + profitSign + "`";
+        "LAST RESULT:\n" + lastWinLevelMsg + "\n\n" +
+        "OVERALL PROFIT: `" + profitSign + "`";
 
       await broadcastMessage(msg);
 
