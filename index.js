@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S Precision Pattern Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S 10-Level Smart Bot Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -36,18 +36,28 @@ let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let lastWinLevelMsg = "None";
+let isCoolingDown = false;
 
-let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
 
+// 🎯 Loss Recovery Based Level Bet Values (2 Numbers Total Bet)
 const levelData = {
-  1: { val: 2 }, 2: { val: 6 }, 3: { val: 18 }, 4: { val: 54 }, 5: { val: 162 }
+  1: { val: 2 },
+  2: { val: 4 },
+  3: { val: 6 },
+  4: { val: 10 },
+  5: { val: 16 },
+  6: { val: 24 },
+  7: { val: 40 },
+  8: { val: 70 },
+  9: { val: 120 },
+  10: { val: 200 }
 };
 
 function getBetVal(level) {
   return levelData[level] ? levelData[level].val : 2;
 }
 
-// 🎯 Highly Accurate Multi-Matrix Pattern Engine
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -60,32 +70,27 @@ function advancedPatternEngine(history) {
     let last2 = numbers[1];
     let last3 = numbers[2];
 
-    // 1. Mirror Strategy
     let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
     scores[mirrorMap[last1]] += 20;
 
-    // 2. 3-Round Matrix Matching (வரலாற்று சுற்றுகளுடன் ஒப்பீடு)
     let patternSeq = `${last3},${last2},${last1}`;
     for (let i = 3; i < numbers.length - 1; i++) {
       let currentSeq = `${numbers[i+1]},${numbers[i]},${numbers[i-1]}`;
       if (patternSeq === currentSeq) {
-        scores[numbers[i-2]] += 25; // Matrix பொருந்தி வந்தால் அதிக Score
+        scores[numbers[i-2]] += 25;
       }
     }
 
-    // 3. Hot Frequency Scoring (கடந்த 50 சுற்றுகள்)
     let recent50 = numbers.slice(0, 50);
     recent50.forEach(num => {
       if (num >= 0 && num <= 9) scores[num] += 0.5;
     });
 
-    // 4. Cold Recovery Scoring (கடந்த 15 சுற்றுகளாக வராத எண்கள்)
     let recent15 = numbers.slice(0, 15);
     for (let i = 0; i <= 9; i++) {
       if (!recent15.includes(i)) scores[i] += 12;
     }
 
-    // 5. Avoid Direct Repeat
     scores[last1] -= 15;
 
     let sortedNumbers = Object.keys(scores)
@@ -147,7 +152,7 @@ async function fetchWinGoData() {
     let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
     let nextPeriod = String(BigInt(actualPeriod) + 1n);
 
-    if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+    if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod && !isCoolingDown) {
       let isNumberHit = lastPredictedNumbers.includes(actualNum);
       let currentLevelExecuted = maintenanceLevel;
       let currentBetVal = getBetVal(currentLevelExecuted);
@@ -164,16 +169,24 @@ async function fetchWinGoData() {
         let winProfit = (singleBet * 9) - currentBetVal; 
         totalProfitLoss += winProfit;
 
-        lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN (+₹" + winProfit.toFixed(1) + ")";
+        lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN (+₹" + winProfit.toFixed(1) + ")\n🎯 **WINNER: (" + actualNum + ") 🎉 JACKPOT!**";
         maintenanceLevel = 1; 
       } else {
         totalLosses++;
         totalProfitLoss -= currentBetVal;
         
-        lastWinLevelMsg = "Level " + currentLevelExecuted + " LOSS (-₹" + currentBetVal + ")";
+        lastWinLevelMsg = "Level " + currentLevelExecuted + " LOSS (-₹" + currentBetVal + ")\n❌ **RESULT: (" + actualNum + ")**";
         
-        if (maintenanceLevel >= 5) {
+        // 🛑 Level 10 Trigger & 1-Min Cooling Period Logic
+        if (maintenanceLevel >= 10) {
           maintenanceLevel = 1; 
+          isCoolingDown = true;
+          lastWinLevelMsg += "\n\n⚠️ **LEVEL 10 REACHED! BOT IN COOLING PAUSE (1 MIN)...**";
+          
+          setTimeout(() => {
+            isCoolingDown = false;
+            broadcastMessage("✅ **COOLING PERIOD COMPLETED. RESUMING PREDICTIONS FROM LEVEL 1!**");
+          }, 60000); // 1 min delay
         } else {
           maintenanceLevel++; 
         }
@@ -190,7 +203,7 @@ async function fetchWinGoData() {
           "• **TOTAL ROUNDS:** " + predictionCount + "\n" +
           "• **TOTAL WINS:** " + totalWins + "\n" +
           "• **TOTAL LOSSES:** " + totalLosses + "\n" +
-          "• **NET PROFIT/LOSS:** " + (totalProfitLoss >= 0 ? "+₹" : "-₹") + Math.abs(totalProfitLoss).toFixed(2) + "\n" +
+          "• **OVERALL PROFIT/LOSS:** " + (totalProfitLoss >= 0 ? "+₹" : "-₹") + Math.abs(totalProfitLoss).toFixed(2) + "\n" +
           "━━━━━━━━━━━━━━━━━━━━━\n" +
           "📈 **LEVEL WINS STATS:**\n" + levelReport;
 
@@ -198,17 +211,18 @@ async function fetchWinGoData() {
       }
     }
 
-    if (nextPeriod !== lastSentPeriod) {
+    if (nextPeriod !== lastSentPeriod && !isCoolingDown) {
       let pred = advancedPatternEngine(list);
       let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+      let currentBet = getBetVal(maintenanceLevel);
 
-      let msg = "👑 **PURE 2-NUMBER ACCURATE PREDICTION** 👑\n\n" +
+      let msg = "👑 **PURE 2-NUMBER SMART PREDICTION** 👑\n\n" +
         "PERIOD: `" + nextPeriod + "`\n" +
         "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
-        "WINS: " + totalWins + "\n" +
-        "LOSSES: " + totalLosses + "\n" +
-        "NET PROFIT/LOSS: " + profitSign + "\n" +
-        "LEVELS WIN: " + lastWinLevelMsg;
+        "👉 **BET LEVEL " + maintenanceLevel + ":** `₹" + currentBet + " (₹" + (currentBet/2) + " each)`\n" +
+        "WINS: " + totalWins + " | LOSSES: " + totalLosses + "\n\n" +
+        "LAST RESULT: " + lastWinLevelMsg + "\n" +
+        "💰 **OVERALL PROFIT:** `" + profitSign + "`";
 
       await broadcastMessage(msg);
 
