@@ -9,34 +9,23 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const SCRAPINGANT_API_KEY = '9b7eaf7431374b2089e3f778b8504522'; 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=120&pageNo=1';
 
-// polling_error அமைப்புகள் சரி செய்யப்பட்டுள்ளன
+// 🎯 உங்கள் Channel ID இங்கே சேர்க்கப்பட்டுள்ளது
+const CHANNEL_ID = '-1003310985903'; 
+
 const bot = new TelegramBot(BOT_TOKEN, { 
   polling: {
     autoStart: true,
-    params: {
-      timeout: 10
-    }
+    params: { timeout: 10 }
   } 
 });
 
-// Polling Error வராமல் தவிர்க்க எரர் ஹேண்ட்லர்
 bot.on('polling_error', (error) => {
   if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
     console.log("Conflict error detected, retrying cleanly...");
-  } else {
-    console.error("Polling Error:", error.message);
   }
 });
 
-let activeChatIds = new Set();
-
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  activeChatIds.add(chatId);
-  bot.sendMessage(chatId, "🚀 **Advanced Pattern Match & Verification Bot Active!**", { parse_mode: 'Markdown' });
-});
-
-app.get('/', (req, res) => res.send('WinGo 30S Advanced Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Channel Bot Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -104,18 +93,19 @@ function advancedPatternEngine(history) {
   }
 }
 
+// 직접 Channel-க்கு Message அனுப்பும் Function
 async function broadcastMessage(msgText) {
-  for (let chatId of activeChatIds) {
-    try {
-      await bot.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
-    } catch (e) {}
+  try {
+    await bot.sendMessage(CHANNEL_ID, msgText, { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error(`Failed to send message to Channel (${CHANNEL_ID}):`, e.message);
   }
 }
 
 let isFetching = false;
 
 async function fetchWinGoData() {
-  if (isFetching || activeChatIds.size === 0) return;
+  if (isFetching) return;
   isFetching = true;
 
   try {
