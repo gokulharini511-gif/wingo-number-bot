@@ -10,20 +10,18 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const SCRAPINGANT_API_KEY = '9b7eaf7431374b2089e3f778b8504522'; 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
-const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-let activeChatIds = new Set(); // Stores users who start the bot directly
+let activeChatIds = new Set();
 
-// Store active chat IDs when user hits /start
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   activeChatIds.add(chatId);
-  bot.sendMessage(chatId, "🚀 **WinGo Pure Number Prediction Bot Active Directly in Chat!**\n\nWait for the next period predictions...", { parse_mode: 'Markdown' });
+  bot.sendMessage(chatId, "🚀 **WinGo Pure Number Prediction Bot Active!**\n\nPredictions start soon...", { parse_mode: 'Markdown' });
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S Direct Chat Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log("Server running on port " + PORT);
@@ -31,7 +29,6 @@ app.listen(PORT, '0.0.0.0', () => {
 
 let lastSentPeriod = "";
 let lastPredictedNumbers = [];
-let lastPredictedColor = "";
 let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalLosses = 0;
@@ -39,31 +36,24 @@ let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
+let lastWinLevelMsg = "None";
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
-  1: { name: "₹1", val: 1 },
-  2: { name: "₹3", val: 3 },
-  3: { name: "₹7", val: 7 },
-  4: { name: "₹20", val: 20 },
-  5: { name: "₹50", val: 50 },
-  6: { name: "₹150", val: 150 },
-  7: { name: "₹450", val: 450 },
-  8: { name: "₹1350", val: 1350 }
+  1: { val: 1 },
+  2: { val: 3 },
+  3: { val: 7 },
+  4: { val: 20 },
+  5: { val: 50 },
+  6: { val: 150 },
+  7: { val: 450 },
+  8: { val: 1350 }
 };
 
 function getBetVal(level) {
   if (levelData[level]) return levelData[level].val;
   return Math.pow(3, level - 1);
-}
-
-function getNumberColor(num) {
-  if ([2, 4, 6, 8].includes(num)) return "RED";
-  if ([1, 3, 7, 9].includes(num)) return "GREEN";
-  if (num === 0) return "RED / VIOLET";
-  if (num === 5) return "GREEN / VIOLET";
-  return "RED";
 }
 
 function deepNumberPatternEngine(history) {
@@ -85,14 +75,10 @@ function deepNumberPatternEngine(history) {
 
     let matchedNumbers = sortedNumbers.slice(0, 2);
     let numbersStr = matchedNumbers.join(", ");
-    
-    let colorStr = "🔴 RED / 🟢 GREEN";
-    if (matchedNumbers.includes(0)) colorStr = "🔴 RED / 🟣 VIOLET";
-    else if (matchedNumbers.includes(5)) colorStr = "🟢 GREEN / 🟣 VIOLET";
 
-    return { targetNumbers: matchedNumbers, numbersStr, colorStr };
+    return { targetNumbers: matchedNumbers, numbersStr };
   } catch (e) {
-    return { targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
+    return { targetNumbers: [7, 8], numbersStr: "7, 8" };
   }
 }
 
@@ -147,11 +133,9 @@ async function fetchWinGoData() {
 
     let lastItem = list[0];
     let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
-    let actualColor = getNumberColor(actualNum);
     let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
     
     let nextPeriod = String(BigInt(actualPeriod) + 1n);
-    let dynamicStatusMsg = "";
 
     if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
       let isNumberHit = lastPredictedNumbers.includes(actualNum);
@@ -169,38 +153,25 @@ async function fetchWinGoData() {
         levelWins[currentLevelExecuted] = (levelWins[currentLevelExecuted] || 0) + 1;
         let winAmount = currentBetVal * 8.8;
         totalProfitLoss += winAmount;
-
-        dynamicStatusMsg = "🎉 **JACKPOT WINNER! Correct Number: (" + actualNum + ")** 🎉";
+        
+        lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN";
         maintenanceLevel = 1;
       } else {
         totalLosses++;
         totalProfitLoss -= currentBetVal;
-        dynamicStatusMsg = "⚠️ **MISS: Result was (" + actualNum + " - " + actualColor + ")**";
         maintenanceLevel++;
       }
 
       if (totalWins >= 30) {
         isStopped = true;
         let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-        let levelReport = "";
-        for (let lvl in levelWins) {
-          if (levelWins[lvl] > 0) {
-            levelReport += `• **Level ${lvl} Wins:** ${levelWins[lvl]}\n`;
-          }
-        }
-
-        let summaryMsg = "🏆 **30 WINS TARGET ACHIEVED! BOT STOPPED** 🏆\n" +
-          "━━━━━━━━━━━━━━━━━━━━━\n" +
-          "📊 **SESSION STATS REPORT**\n" +
-          "• **TOTAL ROUNDS PLAYED:** " + predictionCount + "\n" +
-          "• **TOTAL WINS:** " + totalWins + "\n" +
-          "• **TOTAL LOSSES:** " + totalLosses + "\n" +
-          "• **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
-          "• **NET PROFIT/LOSS:** **" + profitSign + "**\n" +
-          "━━━━━━━━━━━━━━━━━━━━━\n" +
-          "📈 **LEVEL-WISE WINS BREAKDOWN:**\n" + levelReport +
-          "━━━━━━━━━━━━━━━━━━━━━\n" +
-          "Prediction session completed successfully!";
+        
+        let summaryMsg = "🏆 **30 WINS TARGET ACHIEVED! BOT STOPPED** 🏆\n\n" +
+          "PERIOD: " + actualPeriod + "\n" +
+          "WINS: " + totalWins + " / 30\n" +
+          "LOSSES: " + totalLosses + "\n" +
+          "NET PROFIT/LOSS: " + profitSign + "\n" +
+          "LEVELS WIN: " + lastWinLevelMsg;
 
         await broadcastMessage(summaryMsg);
         return;
@@ -209,30 +180,15 @@ async function fetchWinGoData() {
 
     if (nextPeriod !== lastSentPeriod) {
       let pred = deepNumberPatternEngine(list);
-      let activeLevel = maintenanceLevel;
-      let nextLevel = activeLevel + 1;
-      let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
-      let nextBetName = levelData[nextLevel]?.name || ("₹" + getBetVal(nextLevel));
       let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-      let msg = "👑 **PURE NUMBER PREDICTION** 👑\n" +
-        "🎯 **WinGo 30S (30-Win Target)**\n" +
-        "━━━━━━━━━━━━━━━━━━━━━\n" +
-        "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-        "🎯 **TARGET NUMBERS:** `" + pred.numbersStr + "`\n" +
-        "🎨 **COLOUR HINT:** " + pred.colorStr + "\n" +
-        "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
-        "⏩ **IF LOSS NEXT BET:** **" + nextBetName + " (Level " + nextLevel + ")**\n" +
-        "━━━━━━━━━━━━━━━━━━━━━\n";
-
-      if (dynamicStatusMsg !== "") {
-        msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
-      }
-
-      msg += "📊 **WINS:** " + totalWins + " / 30 | **LOSSES:** " + totalLosses + "\n" +
-        "💵 **NET PROFIT/LOSS:** **" + profitSign + "**\n" +
-        "━━━━━━━━━━━━━━━━━━━━━\n\n" +
-        "🔗 **Register Link:**\n" + REGISTER_LINK;
+      let msg = "👑 **PURE NUMBER PREDICTION** 👑\n\n" +
+        "PERIOD: `" + nextPeriod + "`\n" +
+        "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
+        "WINS: " + totalWins + " / 30\n" +
+        "LOSSES: " + totalLosses + "\n" +
+        "NET PROFIT/LOSS: " + profitSign + "\n" +
+        "LEVELS WIN: " + lastWinLevelMsg;
 
       await broadcastMessage(msg);
 
