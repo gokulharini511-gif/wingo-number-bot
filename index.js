@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S Smart Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Advanced 5-Pattern Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -40,7 +40,7 @@ let isCoolingDown = false;
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
 
-// Level Bet Values
+// Level Bet Amounts (Total for 2 Numbers)
 const levelData = {
   1: { val: 2 },
   2: { val: 4 },
@@ -58,11 +58,11 @@ function getBetVal(level) {
   return levelData[level] ? levelData[level].val : 2;
 }
 
-// Advanced Multi-Pattern Accuracy Engine
+// 🎯 Ultra-Advanced 5-Pattern Dynamic Engine
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-    if (numbers.length < 20) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
+    if (numbers.length < 30) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
 
     let scores = {};
     for (let i = 0; i <= 9; i++) scores[i] = 0;
@@ -71,44 +71,75 @@ function advancedPatternEngine(history) {
     let last2 = numbers[1];
     let last3 = numbers[2];
 
-    // 1. Mirror Strategy
-    let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-    scores[mirrorMap[last1]] += 20;
+    // --- PATTERN 1: Hot Pairs & Sequence Frequency (Last 100 rounds) ---
+    let transitionMatrix = {};
+    for (let i = 0; i <= 9; i++) transitionMatrix[i] = {};
 
-    // 2. 3-Round Matrix Matching
-    let patternSeq = `${last3},${last2},${last1}`;
-    for (let i = 3; i < numbers.length - 1; i++) {
-      let currentSeq = `${numbers[i+1]},${numbers[i]},${numbers[i-1]}`;
-      if (patternSeq === currentSeq) {
-        scores[numbers[i-2]] += 30;
+    let limit = Math.min(numbers.length - 1, 100);
+    for (let i = 0; i < limit; i++) {
+      let current = numbers[i + 1];
+      let next = numbers[i];
+      if (current >= 0 && current <= 9 && next >= 0 && next <= 9) {
+        transitionMatrix[current][next] = (transitionMatrix[current][next] || 0) + 1;
       }
     }
 
-    // 3. Hot Frequency Scoring (Last 50)
-    let recent50 = numbers.slice(0, 50);
-    recent50.forEach(num => {
-      if (num >= 0 && num <= 9) scores[num] += 0.8;
-    });
+    if (transitionMatrix[last1]) {
+      Object.keys(transitionMatrix[last1]).forEach(nextNum => {
+        let count = transitionMatrix[last1][nextNum];
+        scores[parseInt(nextNum)] += count * 6; // Heavy weight for historical pairs
+      });
+    }
 
-    // 4. Cold Numbers Boost (Last 15)
+    // --- PATTERN 2: Extreme Odd / Even Imbalance (Reversion to Mean) ---
     let recent15 = numbers.slice(0, 15);
-    for (let i = 0; i <= 9; i++) {
-      if (!recent15.includes(i)) scores[i] += 15;
+    let oddCount = recent15.filter(n => n % 2 !== 0).length;
+    let evenCount = recent15.length - oddCount;
+
+    if (oddCount >= 11) {
+      // Extreme Odd -> Reversal towards Even
+      [0, 2, 4, 6, 8].forEach(n => scores[n] += 20);
+    } else if (evenCount >= 11) {
+      // Extreme Even -> Reversal towards Odd
+      [1, 3, 5, 7, 9].forEach(n => scores[n] += 20);
     }
 
-    // 5. Odd/Even Trend Adjustment
-    let recent5 = numbers.slice(0, 5);
-    let evenCount = recent5.filter(n => n % 2 === 0).length;
-    let oddCount = 5 - evenCount;
-
-    for (let i = 0; i <= 9; i++) {
-      if (evenCount >= 4 && i % 2 !== 0) scores[i] += 10; 
-      if (oddCount >= 4 && i % 2 === 0) scores[i] += 10;
+    // --- PATTERN 3: Sum Value Trait Analysis (Last 3 Rounds Range Trait) ---
+    let sum3 = last1 + last2 + last3;
+    if (sum3 >= 20) {
+      // High Range Trait -> Favors Lower/Mid Shift
+      [0, 1, 2, 3, 4].forEach(n => scores[n] += 12);
+    } else if (sum3 <= 7) {
+      // Low Range Trait -> Favors Upper/Mid Shift
+      [5, 6, 7, 8, 9].forEach(n => scores[n] += 12);
     }
 
-    // Avoid immediate repetition
-    scores[last1] -= 15;
+    // --- PATTERN 4: Distance & Skip Analysis (Overdue Numbers) ---
+    let lastSeenIndex = {};
+    for (let i = 0; i <= 9; i++) lastSeenIndex[i] = 999;
 
+    for (let i = 0; i < numbers.length; i++) {
+      let num = numbers[i];
+      if (num >= 0 && num <= 9 && lastSeenIndex[num] === 999) {
+        lastSeenIndex[num] = i;
+      }
+    }
+
+    for (let i = 0; i <= 9; i++) {
+      let gap = lastSeenIndex[i];
+      if (gap >= 12 && gap < 40) {
+        scores[i] += Math.min(gap * 1.5, 25); // Overdue boost
+      }
+    }
+
+    // --- PATTERN 5: Mirror Complement Weighting ---
+    let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
+    scores[mirrorMap[last1]] += 15;
+
+    // Avoid Direct Immediate Repeat Penalty
+    scores[last1] -= 10;
+
+    // --- DYNAMIC ADAPTIVE WEIGHTING (Ranking top 2 numbers) ---
     let sortedNumbers = Object.keys(scores)
       .map(Number)
       .sort((a, b) => scores[b] - scores[a]);
