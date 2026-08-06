@@ -9,7 +9,24 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const SCRAPINGANT_API_KEY = '9b7eaf7431374b2089e3f778b8504522'; 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=120&pageNo=1';
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
+// polling_error அமைப்புகள் சரி செய்யப்பட்டுள்ளன
+const bot = new TelegramBot(BOT_TOKEN, { 
+  polling: {
+    autoStart: true,
+    params: {
+      timeout: 10
+    }
+  } 
+});
+
+// Polling Error வராமல் தவிர்க்க எரர் ஹேண்ட்லர்
+bot.on('polling_error', (error) => {
+  if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+    console.log("Conflict error detected, retrying cleanly...");
+  } else {
+    console.error("Polling Error:", error.message);
+  }
+});
 
 let activeChatIds = new Set();
 
@@ -43,28 +60,24 @@ function getBetVal(level) {
   return levelData[level] ? levelData[level].val : Math.pow(3, level - 1);
 }
 
-// Advanced 120-Data Sequence & Time-Shift Pattern Matching Engine
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
     
     if (numbers.length < 5) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
 
-    // Get current last 2 and 3 numbers sequence
     let last2 = numbers.slice(0, 2).reverse().join(",");
     let last3 = numbers.slice(0, 3).reverse().join(",");
 
     let nextNumberScores = {};
     for (let i = 0; i <= 9; i++) nextNumberScores[i] = 0;
 
-    // Search historical patterns in 120 recent draws
     for (let i = 2; i < numbers.length - 1; i++) {
       let seq2 = numbers[i - 1] + "," + numbers[i];
       let seq3 = (i >= 2) ? numbers[i - 2] + "," + numbers[i - 1] + "," + numbers[i] : "";
 
       let nextNum = numbers[i + 1];
 
-      // Double match verification (Higher weightage for 3-seq, then 2-seq)
       if (seq3 === last3) {
         nextNumberScores[nextNum] += 10;
       } else if (seq2 === last2) {
@@ -72,11 +85,9 @@ function advancedPatternEngine(history) {
       }
     }
 
-    // Time-based Weighting (Morning / Afternoon / Night shifts)
     let currentHour = new Date().getHours();
     let timeWeightMultiplier = (currentHour >= 6 && currentHour < 12) ? 1.2 : (currentHour >= 12 && currentHour < 18) ? 1.1 : 1.3;
 
-    // Recency weighting across 120 history
     for (let i = 0; i < numbers.length; i++) {
       let num = numbers[i];
       nextNumberScores[num] += (120 - i) * 0.1 * timeWeightMultiplier;
@@ -160,7 +171,6 @@ async function fetchWinGoData() {
         maintenanceLevel++;
       }
 
-      // Send 60 Prediction Report Summary
       if (predictionCount % 60 === 0) {
         let levelReport = "";
         for (let lvl in levelWins) {
