@@ -6,24 +6,27 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Configurations (Updated Keys)
+// Configurations
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
-const CHANNEL_ID = '-1002486828817'; 
 const SCRAPINGANT_API_KEY = '9b7eaf7431374b2089e3f778b8504522'; 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-app.get('/', (req, res) => res.send('WinGo 30S Number Precision Engine Active!'));
+let activeChatIds = new Set(); // Stores users who start the bot directly
 
-app.listen(PORT, '0.0.0.0', async () => {
+// Store active chat IDs when user hits /start
+bot.onText(/\/start/, (msg) => {
+  const chatId = msg.chat.id;
+  activeChatIds.add(chatId);
+  bot.sendMessage(chatId, "🚀 **WinGo Pure Number Prediction Bot Active Directly in Chat!**\n\nWait for the next period predictions...", { parse_mode: 'Markdown' });
+});
+
+app.get('/', (req, res) => res.send('WinGo 30S Direct Chat Bot Active!'));
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log("Server running on port " + PORT);
-  try {
-    await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Pure Number Prediction Bot Live!**", { parse_mode: 'Markdown' });
-  } catch (e) {
-    console.error("Startup Telegram Notification Error:", e.message);
-  }
 });
 
 let lastSentPeriod = "";
@@ -36,9 +39,7 @@ let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
-let predictionHistory = [];
 
-// Track wins per martingale level
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
@@ -65,7 +66,6 @@ function getNumberColor(num) {
   return "RED";
 }
 
-// Pure Number Pattern Analysis Engine
 function deepNumberPatternEngine(history) {
   try {
     let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -73,19 +73,16 @@ function deepNumberPatternEngine(history) {
     let numberFrequency = {};
     for (let i = 0; i <= 9; i++) numberFrequency[i] = 0;
 
-    // Calculate frequency & recency weight over last 60 draws
     for (let i = 0; i < Math.min(60, allNumbers.length); i++) {
       let num = allNumbers[i];
-      let weight = (60 - i); // Higher score for recent numbers
+      let weight = (60 - i);
       numberFrequency[num] += weight;
     }
 
-    // Sort numbers by highest score
     let sortedNumbers = Object.keys(numberFrequency)
       .map(Number)
       .sort((a, b) => numberFrequency[b] - numberFrequency[a]);
 
-    // Pick top 2 most predicted numbers
     let matchedNumbers = sortedNumbers.slice(0, 2);
     let numbersStr = matchedNumbers.join(", ");
     
@@ -95,16 +92,25 @@ function deepNumberPatternEngine(history) {
 
     return { targetNumbers: matchedNumbers, numbersStr, colorStr };
   } catch (e) {
-    console.error("Pattern Engine Error:", e.message);
     return { targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
   }
 }
 
+async function broadcastMessage(msgText) {
+  for (let chatId of activeChatIds) {
+    try {
+      await bot.sendMessage(chatId, msgText, { parse_mode: 'Markdown' });
+    } catch (e) {
+      console.error(`Failed to send message to ${chatId}:`, e.message);
+    }
+  }
+}
+
 let isFetching = false;
-let isStopped = false; // Auto-stop flag once 30 Wins achieved
+let isStopped = false;
 
 async function fetchWinGoData() {
-  if (isFetching || isStopped) return;
+  if (isFetching || isStopped || activeChatIds.size === 0) return;
   isFetching = true;
 
   try {
@@ -161,21 +167,18 @@ async function fetchWinGoData() {
       if (isNumberHit) {
         totalWins++;
         levelWins[currentLevelExecuted] = (levelWins[currentLevelExecuted] || 0) + 1;
-        let winAmount = currentBetVal * 8.8; // Number prediction payout multiplier
+        let winAmount = currentBetVal * 8.8;
         totalProfitLoss += winAmount;
 
         dynamicStatusMsg = "🎉 **JACKPOT WINNER! Correct Number: (" + actualNum + ")** 🎉";
-        predictionHistory.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
         maintenanceLevel = 1;
       } else {
         totalLosses++;
         totalProfitLoss -= currentBetVal;
         dynamicStatusMsg = "⚠️ **MISS: Result was (" + actualNum + " - " + actualColor + ")**";
-        predictionHistory.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
         maintenanceLevel++;
       }
 
-      // AUTO STOP WHEN 30 WINS ARE COMPLETED
       if (totalWins >= 30) {
         isStopped = true;
         let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
@@ -199,7 +202,7 @@ async function fetchWinGoData() {
           "━━━━━━━━━━━━━━━━━━━━━\n" +
           "Prediction session completed successfully!";
 
-        await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
+        await broadcastMessage(summaryMsg);
         return;
       }
     }
@@ -231,12 +234,11 @@ async function fetchWinGoData() {
         "━━━━━━━━━━━━━━━━━━━━━\n\n" +
         "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-      await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+      await broadcastMessage(msg);
 
       lastSentPeriod = nextPeriod;
       lastPredictedPeriod = nextPeriod;
       lastPredictedNumbers = pred.targetNumbers;
-      console.log("[NUMBER ENGINE] Sent Period: " + nextPeriod + " (Wins: " + totalWins + "/30)");
     }
   } catch (error) {
     console.error('[FETCH ERROR]:', error.message);
