@@ -1,9 +1,139 @@
-// ... [மேலே உள்ள code பகுதிகள் மாறாது] ...
+const axios = require('axios');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
+const SCRAPINGANT_API_KEY = '9b7eaf7431374b2089e3f778b8504522'; 
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=120&pageNo=1';
+
+const CHANNEL_ID = '-1003310985903'; 
+
+const bot = new TelegramBot(BOT_TOKEN, { 
+  polling: {
+    autoStart: true,
+    params: { timeout: 10 }
+  } 
+});
+
+bot.on('polling_error', (error) => {
+  if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+    console.log("Conflict error detected, retrying cleanly...");
+  }
+});
+
+app.get('/', (req, res) => res.send('WinGo 30S High-Win Rate Bot Active!'));
+app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
+
+let lastSentPeriod = "";
+let lastPredictedNumbers = [];
+let lastPredictedPeriod = null;
+let totalWins = 0;
+let totalLosses = 0;
+let maintenanceLevel = 1;
+let totalProfitLoss = 0;
+let predictionCount = 0;
+let lastWinLevelMsg = "None";
+
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+
+const levelData = {
+  1: { val: 5 }, 2: { val: 15 }, 3: { val: 35 }, 4: { val: 100 },
+  5: { val: 250 }, 6: { val: 750 }, 7: { val: 2250 }, 8: { val: 6750 }
+};
+
+function getBetVal(level) {
+  return levelData[level] ? levelData[level].val : Math.pow(3, level - 1) * 5;
+}
+
+// 🎯 5 எண்கள் தேர்வு செய்யும் மேம்படுத்தப்பட்ட அல்காரிதம் (50% Win Rate)
+function advancedPatternEngine(history) {
+  try {
+    let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
+    
+    if (numbers.length < 5) return { targetNumbers: [0, 2, 4, 6, 8], numbersStr: "0, 2, 4, 6, 8" };
+
+    let last2 = numbers.slice(0, 2).reverse().join(",");
+    let nextNumberScores = {};
+    for (let i = 0; i <= 9; i++) nextNumberScores[i] = 0;
+
+    for (let i = 1; i < numbers.length - 1; i++) {
+      let seq2 = numbers[i - 1] + "," + numbers[i];
+      let nextNum = numbers[i + 1];
+      if (seq2 === last2) nextNumberScores[nextNum] += 5;
+    }
+
+    for (let i = 0; i < numbers.length; i++) {
+      let num = numbers[i];
+      nextNumberScores[num] += (120 - i) * 0.1;
+    }
+
+    let sortedNumbers = Object.keys(nextNumberScores)
+      .map(Number)
+      .sort((a, b) => nextNumberScores[b] - nextNumberScores[a]);
+
+    // அதிக வாய்ப்புள்ள 5 எண்கள் தேர்வு
+    let matchedNumbers = sortedNumbers.slice(0, 5);
+    return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
+  } catch (e) {
+    return { targetNumbers: [1, 3, 5, 7, 9], numbersStr: "1, 3, 5, 7, 9" };
+  }
+}
+
+async function broadcastMessage(msgText) {
+  try {
+    await bot.sendMessage(CHANNEL_ID, msgText, { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error(`Failed to send message to Channel (${CHANNEL_ID}):`, e.message);
+  }
+}
+
+let isFetching = false;
+
+async function fetchWinGoData() {
+  if (isFetching) return;
+  isFetching = true;
+
+  try {
+    let rawContent = null;
+    try {
+      const directRes = await axios.get(TARGET_URL, {
+        timeout: 8000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Referer': 'https://www.rajastake7.com/'
+        }
+      });
+      rawContent = directRes.data;
+    } catch (err) {
+      try {
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
+        const response = await axios.get(scraperUrl, { timeout: 8000 });
+        rawContent = response.data;
+      } catch (e) {}
+    }
+
+    if (typeof rawContent === 'string') {
+      try { rawContent = JSON.parse(rawContent); } catch (e) {}
+    }
+
+    let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
+    if (!list || !Array.isArray(list) || list.length === 0) {
+      isFetching = false;
+      return;
+    }
+
+    let lastItem = list[0];
+    let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
+    let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
+    let nextPeriod = String(BigInt(actualPeriod) + 1n);
 
     if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
       let isNumberHit = lastPredictedNumbers.includes(actualNum);
       let currentLevelExecuted = maintenanceLevel;
-      let currentBetVal = getBetVal(currentLevelExecuted);
+      let currentBetVal = getBetVal(currentLevelExecuted); // 5 எண்களுக்கான முதலீடு
 
       predictionCount++;
 
@@ -11,20 +141,19 @@
         totalWins++;
         levelWins[currentLevelExecuted] = (levelWins[currentLevelExecuted] || 0) + 1;
         
-        // 🎯 Single Number Target என்பதால் Win ஆகும்போது 9x (9x Bet Amount) லாபம் சேரும்
-        let winProfit = currentBetVal * 9; 
+        // 5 எண்களில் 1 எண் ஜெயித்தால் 9 மடங்கு Return. (நிகர லாபம் = முதலீடு * 4)
+        let unitBet = currentBetVal / 5;
+        let winProfit = unitBet * 4; 
         totalProfitLoss += winProfit;
 
-        lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN (+₹" + winProfit + ")";
-        maintenanceLevel = 1; // Win ஆனதும் Level 1-க்குத் திரும்பும்
+        lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN (+₹" + winProfit.toFixed(1) + ")";
+        maintenanceLevel = 1; 
       } else {
         totalLosses++;
-        
-        // ❌ Loss ஆகும்போது அந்த Level-க்கு வைக்கப்பட்ட Bet Amount மட்டும் கழியும்
         totalProfitLoss -= currentBetVal;
         
         lastWinLevelMsg = "Level " + currentLevelExecuted + " LOSS (-₹" + currentBetVal + ")";
-        maintenanceLevel++; // Loss ஆனதால் அடுத்த Level-க்கு செல்லும்
+        maintenanceLevel++; 
       }
 
       if (predictionCount % 60 === 0) {
@@ -46,4 +175,32 @@
       }
     }
 
-// ... [கீழே உள்ள மற்ற code பகுதிகள் மாறாது] ...
+    if (nextPeriod !== lastSentPeriod) {
+      let pred = advancedPatternEngine(list);
+      let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+
+      let msg = "👑 **HIGH-ACCURACY 5-NUMBER PREDICTION** 👑\n\n" +
+        "PERIOD: `" + nextPeriod + "`\n" +
+        "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
+        "WINS: " + totalWins + "\n" +
+        "LOSSES: " + totalLosses + "\n" +
+        "NET PROFIT/LOSS: " + profitSign + "\n" +
+        "LEVELS WIN: " + lastWinLevelMsg;
+
+      await broadcastMessage(msg);
+
+      lastSentPeriod = nextPeriod;
+      lastPredictedPeriod = nextPeriod;
+      lastPredictedNumbers = pred.targetNumbers;
+    }
+  } catch (error) {
+    console.error('[FETCH ERROR]:', error.message);
+  } finally {
+    isFetching = false;
+  }
+}
+
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
+
+setInterval(fetchWinGoData, 3000);
