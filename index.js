@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S High-Win Rate Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S 2-Number Bot Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -39,44 +39,59 @@ let lastWinLevelMsg = "None";
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
+// 2 எண்களுக்கான Level Bet Values
 const levelData = {
-  1: { val: 5 }, 2: { val: 15 }, 3: { val: 35 }, 4: { val: 100 },
-  5: { val: 250 }, 6: { val: 750 }, 7: { val: 2250 }, 8: { val: 6750 }
+  1: { val: 2 }, 2: { val: 6 }, 3: { val: 18 }, 4: { val: 54 },
+  5: { val: 162 }, 6: { val: 486 }, 7: { val: 1458 }, 8: { val: 4374 }
 };
 
 function getBetVal(level) {
-  return levelData[level] ? levelData[level].val : Math.pow(3, level - 1) * 5;
+  return levelData[level] ? levelData[level].val : Math.pow(3, level - 1) * 2;
 }
 
+// 🎯 2 எண்கள் மட்டும் தேர்வு செய்யும் Pattern Engine
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
     
-    if (numbers.length < 5) return { targetNumbers: [0, 2, 4, 6, 8], numbersStr: "0, 2, 4, 6, 8" };
+    if (numbers.length < 5) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
 
     let last2 = numbers.slice(0, 2).reverse().join(",");
+    let last3 = numbers.slice(0, 3).reverse().join(",");
+
     let nextNumberScores = {};
     for (let i = 0; i <= 9; i++) nextNumberScores[i] = 0;
 
-    for (let i = 1; i < numbers.length - 1; i++) {
+    for (let i = 2; i < numbers.length - 1; i++) {
       let seq2 = numbers[i - 1] + "," + numbers[i];
+      let seq3 = (i >= 2) ? numbers[i - 2] + "," + numbers[i - 1] + "," + numbers[i] : "";
+
       let nextNum = numbers[i + 1];
-      if (seq2 === last2) nextNumberScores[nextNum] += 5;
+
+      if (seq3 === last3) {
+        nextNumberScores[nextNum] += 10;
+      } else if (seq2 === last2) {
+        nextNumberScores[nextNum] += 5;
+      }
     }
+
+    let currentHour = new Date().getHours();
+    let timeWeightMultiplier = (currentHour >= 6 && currentHour < 12) ? 1.2 : (currentHour >= 12 && currentHour < 18) ? 1.1 : 1.3;
 
     for (let i = 0; i < numbers.length; i++) {
       let num = numbers[i];
-      nextNumberScores[num] += (120 - i) * 0.1;
+      nextNumberScores[num] += (120 - i) * 0.1 * timeWeightMultiplier;
     }
 
     let sortedNumbers = Object.keys(nextNumberScores)
       .map(Number)
       .sort((a, b) => nextNumberScores[b] - nextNumberScores[a]);
 
-    let matchedNumbers = sortedNumbers.slice(0, 5);
+    // அதிக வாய்ப்புள்ள 2 எண்கள் மட்டும் தேர்வு செய்யப்படும்
+    let matchedNumbers = sortedNumbers.slice(0, 2);
     return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
   } catch (e) {
-    return { targetNumbers: [1, 3, 5, 7, 9], numbersStr: "1, 3, 5, 7, 9" };
+    return { targetNumbers: [3, 8], numbersStr: "3, 8" };
   }
 }
 
@@ -131,7 +146,7 @@ async function fetchWinGoData() {
     if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
       let isNumberHit = lastPredictedNumbers.includes(actualNum);
       let currentLevelExecuted = maintenanceLevel;
-      let currentBetVal = getBetVal(currentLevelExecuted);
+      let currentBetVal = getBetVal(currentLevelExecuted); // 2 எண்களுக்கான மொத்த முதலீடு
 
       predictionCount++;
 
@@ -139,8 +154,9 @@ async function fetchWinGoData() {
         totalWins++;
         levelWins[currentLevelExecuted] = (levelWins[currentLevelExecuted] || 0) + 1;
         
-        let unitBet = currentBetVal / 5;
-        let winProfit = unitBet * 4; 
+        // 1 எண் ஜெயித்தால்: (Single Bet * 9) - Total Level Bet
+        let singleBet = currentBetVal / 2;
+        let winProfit = (singleBet * 9) - currentBetVal; 
         totalProfitLoss += winProfit;
 
         lastWinLevelMsg = "Level " + currentLevelExecuted + " WIN (+₹" + winProfit.toFixed(1) + ")";
@@ -176,7 +192,7 @@ async function fetchWinGoData() {
       let pred = advancedPatternEngine(list);
       let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-      let msg = "👑 **HIGH-ACCURACY 5-NUMBER PREDICTION** 👑\n\n" +
+      let msg = "👑 **PURE 2-NUMBER PREDICTION** 👑\n\n" +
         "PERIOD: `" + nextPeriod + "`\n" +
         "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
         "WINS: " + totalWins + "\n" +
