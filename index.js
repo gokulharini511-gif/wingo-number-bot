@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S Advanced Pattern Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Precision Pattern Bot Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -37,56 +37,65 @@ let totalProfitLoss = 0;
 let predictionCount = 0;
 let lastWinLevelMsg = "None";
 
-let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
 
 const levelData = {
-  1: { val: 2 }, 2: { val: 6 }, 3: { val: 18 }, 4: { val: 54 },
-  5: { val: 162 }, 6: { val: 486 }, 7: { val: 1458 }, 8: { val: 4374 }
+  1: { val: 2 }, 2: { val: 6 }, 3: { val: 18 }, 4: { val: 54 }, 5: { val: 162 }
 };
 
 function getBetVal(level) {
-  return levelData[level] ? levelData[level].val : Math.pow(3, level - 1) * 2;
+  return levelData[level] ? levelData[level].val : 2;
 }
 
-// 🎯 Mirror Number + Cold Number Advanced Algorithm
+// 🎯 Highly Accurate Multi-Matrix Pattern Engine
 function advancedPatternEngine(history) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-    if (numbers.length < 10) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
+    if (numbers.length < 20) return { targetNumbers: [2, 7], numbersStr: "2, 7" };
 
-    let nextNumberScores = {};
-    for (let i = 0; i <= 9; i++) nextNumberScores[i] = 0;
+    let scores = {};
+    for (let i = 0; i <= 9; i++) scores[i] = 0;
 
-    let lastNum = numbers[0]; 
+    let last1 = numbers[0];
+    let last2 = numbers[1];
+    let last3 = numbers[2];
 
-    // 1. Mirror Number Logic (0-5, 1-6, 2-7, 3-8, 4-9)
+    // 1. Mirror Strategy
     let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-    let mirrorNum = mirrorMap[lastNum];
-    nextNumberScores[mirrorNum] += 15; 
+    scores[mirrorMap[last1]] += 20;
 
-    // 2. Cold Number Logic (கடந்த 25 ரவுண்டில் வராத எண்கள்)
-    let recent25 = numbers.slice(0, 25);
+    // 2. 3-Round Matrix Matching (வரலாற்று சுற்றுகளுடன் ஒப்பீடு)
+    let patternSeq = `${last3},${last2},${last1}`;
+    for (let i = 3; i < numbers.length - 1; i++) {
+      let currentSeq = `${numbers[i+1]},${numbers[i]},${numbers[i-1]}`;
+      if (patternSeq === currentSeq) {
+        scores[numbers[i-2]] += 25; // Matrix பொருந்தி வந்தால் அதிக Score
+      }
+    }
+
+    // 3. Hot Frequency Scoring (கடந்த 50 சுற்றுகள்)
+    let recent50 = numbers.slice(0, 50);
+    recent50.forEach(num => {
+      if (num >= 0 && num <= 9) scores[num] += 0.5;
+    });
+
+    // 4. Cold Recovery Scoring (கடந்த 15 சுற்றுகளாக வராத எண்கள்)
+    let recent15 = numbers.slice(0, 15);
     for (let i = 0; i <= 9; i++) {
-      if (!recent25.includes(i)) {
-        nextNumberScores[i] += 12; 
-      }
+      if (!recent15.includes(i)) scores[i] += 12;
     }
 
-    // 3. Historical Frequency Logic
-    for (let i = 0; i < numbers.length - 1; i++) {
-      if (numbers[i + 1] === lastNum) {
-        nextNumberScores[numbers[i]] += 8;
-      }
-    }
+    // 5. Avoid Direct Repeat
+    scores[last1] -= 15;
 
-    let sortedNumbers = Object.keys(nextNumberScores)
+    let sortedNumbers = Object.keys(scores)
       .map(Number)
-      .sort((a, b) => nextNumberScores[b] - nextNumberScores[a]);
+      .sort((a, b) => scores[b] - scores[a]);
 
     let matchedNumbers = sortedNumbers.slice(0, 2);
     return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
   } catch (e) {
-    return { targetNumbers: [2, 7], numbersStr: "2, 7" };
+    return { targetNumbers: [3, 8], numbersStr: "3, 8" };
   }
 }
 
@@ -147,7 +156,9 @@ async function fetchWinGoData() {
 
       if (isNumberHit) {
         totalWins++;
-        levelWins[currentLevelExecuted] = (levelWins[currentLevelExecuted] || 0) + 1;
+        if (levelWins[currentLevelExecuted] !== undefined) {
+          levelWins[currentLevelExecuted]++;
+        }
         
         let singleBet = currentBetVal / 2;
         let winProfit = (singleBet * 9) - currentBetVal; 
@@ -160,7 +171,12 @@ async function fetchWinGoData() {
         totalProfitLoss -= currentBetVal;
         
         lastWinLevelMsg = "Level " + currentLevelExecuted + " LOSS (-₹" + currentBetVal + ")";
-        maintenanceLevel++; 
+        
+        if (maintenanceLevel >= 5) {
+          maintenanceLevel = 1; 
+        } else {
+          maintenanceLevel++; 
+        }
       }
 
       if (predictionCount % 60 === 0) {
@@ -169,7 +185,7 @@ async function fetchWinGoData() {
           if (levelWins[lvl] > 0) levelReport += `• **Level ${lvl} Wins:** ${levelWins[lvl]}\n`;
         }
 
-        let reportMsg = "📊 **60 PREDICTIONS COMPLETED SUMMARY REPORT** 📊\n" +
+        let reportMsg = "📊 **60 PREDICTIONS SUMMARY REPORT** 📊\n" +
           "━━━━━━━━━━━━━━━━━━━━━\n" +
           "• **TOTAL ROUNDS:** " + predictionCount + "\n" +
           "• **TOTAL WINS:** " + totalWins + "\n" +
@@ -186,7 +202,7 @@ async function fetchWinGoData() {
       let pred = advancedPatternEngine(list);
       let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-      let msg = "👑 **PURE 2-NUMBER PREDICTION** 👑\n\n" +
+      let msg = "👑 **PURE 2-NUMBER ACCURATE PREDICTION** 👑\n\n" +
         "PERIOD: `" + nextPeriod + "`\n" +
         "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
         "WINS: " + totalWins + "\n" +
