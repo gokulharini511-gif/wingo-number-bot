@@ -6,10 +6,11 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
-const CHANNEL_ID = '-1002486828817';
+// Updated New Channel ID
+const CHANNEL_ID = '-1003310985903';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-// API Gateways (Primary & Fallback Mirrors)
+// API Gateways
 const API_ENDPOINTS = [
     'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
     'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
@@ -114,7 +115,6 @@ async function fetchWinGoData() {
 
     let list = null;
 
-    // Direct Browser Request - Rotate Mirrors if blocked
     for (let url of API_ENDPOINTS) {
         try {
             const res = await axios.get(url, {
@@ -135,7 +135,7 @@ async function fetchWinGoData() {
             let extractedList = data?.data?.list || data?.list || data?.data;
             if (Array.isArray(extractedList) && extractedList.length > 0) {
                 list = extractedList;
-                break; // Found valid data
+                break;
             }
         } catch (err) {
             // Try next endpoint
@@ -257,7 +257,7 @@ async function fetchWinGoData() {
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            console.log("[SUCCESS] Sent Prediction for Period: " + nextPeriod);
+            console.log("[SUCCESS] Sent Prediction to " + CHANNEL_ID + " for Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
