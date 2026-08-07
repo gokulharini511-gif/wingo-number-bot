@@ -220,9 +220,10 @@ async function fetchWinGoData() {
                 let winProfit = currentBetVal * 0.98;
                 totalProfitLoss += winProfit;
 
-                dynamicStatusMsg = "✨ **BIG/SMALL WINNER (" + actualSize + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")** ✨";
+                let winLabel = (actualSize === "BIG") ? "✨ BIG WINNER" : "✨ SMALL WINNER";
+                dynamicStatusMsg = winLabel + " (" + actualSize + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")";
 
-                prediction60History.unshift({ period: actualPeriod, status: "SIZE WIN", level: currentLevelExecuted });
+                prediction60History.unshift({ period: actualPeriod, status: actualSize + " WIN", level: currentLevelExecuted });
                 maintenanceLevel = 1;
 
             } else {
