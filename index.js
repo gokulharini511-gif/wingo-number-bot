@@ -2,21 +2,20 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render Uptime
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+// Reduced pageSize to 50 to prevent API blocking
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Smart Prediction Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Smart Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -25,7 +24,6 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (e) {
         console.error("Startup Notification Error:", e.message);
     }
-    // Server On ஆனவுடன் உடனடியாக முதல்முறை Data Fetch செய்ய
     fetchWinGoData();
 });
 
@@ -58,11 +56,10 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// SMART HIGH ACCURACY & LOW-LOSS PREDICTION ENGINE
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (numbers.length < 15) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
+        if (numbers.length < 10) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
 
         let scores = {};
         for (let i = 0; i <= 9; i++) scores[i] = 0;
@@ -101,7 +98,6 @@ function deepHistoryPatternEngine(history, currentLevel) {
         return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
 
     } catch (e) {
-        console.error("Pattern Engine Error:", e.message);
         return { targetNumbers: [1, 3], numbersStr: "1, 3" };
     }
 }
@@ -119,7 +115,7 @@ async function fetchWinGoData() {
             const directRes = await axios.get(TARGET_URL, {
                 timeout: 8000,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36',
                     'Accept': 'application/json, text/plain, */*',
                     'Referer': 'https://www.rajastake7.com/'
                 }
@@ -127,20 +123,22 @@ async function fetchWinGoData() {
             rawContent = directRes.data;
         } catch (err) {
             try {
-                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-                const response = await axios.get(scraperUrl, { timeout: 8000 });
+                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
+                const response = await axios.get(scraperUrl, { timeout: 10000 });
                 rawContent = response.data;
-            } catch (e) {}
+            } catch (e) {
+                console.error("Scraper Proxy failed:", e.message);
+            }
         }
 
         if (typeof rawContent === 'string') {
             try { rawContent = JSON.parse(rawContent); } catch (e) {}
         }
 
-        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
+        let list = rawContent?.data?.list || rawContent?.list || rawContent?.data || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Data list is empty or invalid!");
+            console.log("Retrying API Fetch...");
             isFetching = false;
             return;
         }
@@ -210,7 +208,7 @@ async function fetchWinGoData() {
                     summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
                 });
 
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for next 60 rounds!**";
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
