@@ -24,7 +24,7 @@ bot.on('polling_error', (error) => {
   }
 });
 
-app.get('/', (req, res) => res.send('WinGo 30S Pure Trend & Zone Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Smart Prediction Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 let lastSentPeriod = "";
@@ -36,7 +36,6 @@ let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let lastWinLevelMsg = "None";
-let isCoolingDown = false;
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
 
@@ -57,66 +56,47 @@ function getBetVal(level) {
   return levelData[level] ? levelData[level].val : 2;
 }
 
-// PURE TREND & ZONE ALIGNMENT PREDICTION ENGINE
+// SMART ACCURACY & LOW-LOSS PREDICTION ENGINE
 function advancedPatternEngine(history, currentLevel) {
   try {
     let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
     if (numbers.length < 15) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
 
+    let scores = {};
+    for (let i = 0; i <= 9; i++) scores[i] = 0;
+
+    let recent15 = numbers.slice(0, 15);
     let last1 = numbers[0];
     let last2 = numbers[1];
-    let last3 = numbers[2];
 
-    let recent10 = numbers.slice(0, 10);
-    let highCount = recent10.filter(n => n >= 5).length;
-
-    let targetZone = "BIG"; // Default Zone
-
-    // 1. ZIG-ZAG / ALTERNATING ZONE DETECTION
-    let isZoneAlternating = ((last1 >= 5) !== (last2 >= 5)) && ((last2 >= 5) !== (last3 >= 5));
-
-    if (isZoneAlternating) {
-      // மாறி மாறி வந்தால், கடைசி எண் Big என்றால் அடுத்தது Small, இல்லை என்றால் Big
-      targetZone = (last1 >= 5) ? "SMALL" : "BIG";
-    } else {
-      // 2. STREAK / MOMENTUM TREND DETECTION
-      if (highCount >= 5) {
-        targetZone = "BIG";
-      } else {
-        targetZone = "SMALL";
-      }
-    }
-
-    // 3. LEVEL RECOVERY ADJUSTMENT (Higher Levels Focus On Safe High Frequency)
-    if (currentLevel >= 3) {
-      let isLastBig = last1 >= 5;
-      targetZone = isLastBig ? "BIG" : "SMALL";
-    }
-
-    // Zone எண்களின் அடிப்படையில் Score வழங்குதல்
-    let scores = {};
-    let candidateNumbers = (targetZone === "BIG") ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-    
-    candidateNumbers.forEach(n => scores[n] = 0);
-
-    // Dynamic Hot Scoring in Target Zone
-    numbers.slice(0, 15).forEach(num => {
-      if (candidateNumbers.includes(num)) {
-        scores[num] += 5;
-      }
+    // 1. DYNAMIC FREQUENCY SCORING (Hot Numbers)
+    recent15.forEach(n => {
+      if (n >= 0 && n <= 9) scores[n] += 4;
     });
 
-    // Mirror Shift Scoring
-    let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-    let mirrorTarget = mirrorMap[last1];
-    if (candidateNumbers.includes(mirrorTarget)) {
-      scores[mirrorTarget] += 10;
+    // 2. PARITY MOMENTUM
+    let oddCount = recent15.slice(0, 5).filter(n => n % 2 !== 0).length;
+    if (oddCount >= 3) {
+      [1, 3, 5, 7, 9].forEach(n => scores[n] += 15);
+    } else {
+      [0, 2, 4, 6, 8].forEach(n => scores[n] += 15);
     }
 
-    // Direct repeat score reduction (ஒரே எண் மீண்டும் வருவதைக் குறைக்க)
-    if (candidateNumbers.includes(last1)) {
-      scores[last1] -= 8;
+    // 3. MIRROR SHIFT RECOVERY
+    let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
+    if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 12;
+
+    // 4. STEP PATTERN (+2 / -2 Shift)
+    scores[(last1 + 2) % 10] += 10;
+    scores[(last1 + 8) % 10] += 10;
+
+    // 5. HIGH LEVEL RECOVERY SAFETY (Level 4+)
+    if (currentLevel >= 4) {
+      scores[(last1 + 5) % 10] += 20;
     }
+
+    // Direct repeat penalty (ஒரே எண் உடனே வருவதைக் குறைக்க)
+    scores[last1] -= 6;
 
     let sortedNumbers = Object.keys(scores)
       .map(Number)
@@ -125,7 +105,7 @@ function advancedPatternEngine(history, currentLevel) {
     let matchedNumbers = sortedNumbers.slice(0, 2);
     return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
   } catch (e) {
-    return { targetNumbers: [0, 2], numbersStr: "0, 2" };
+    return { targetNumbers: [1, 3], numbersStr: "1, 3" };
   }
 }
 
@@ -177,7 +157,7 @@ async function fetchWinGoData() {
     let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
     let nextPeriod = String(BigInt(actualPeriod) + 1n);
 
-    if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod && !isCoolingDown) {
+    if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
       let isNumberHit = lastPredictedNumbers.includes(actualNum);
       let currentLevelExecuted = maintenanceLevel;
       let currentBetVal = getBetVal(currentLevelExecuted);
@@ -194,7 +174,7 @@ async function fetchWinGoData() {
         let winProfit = (singleBet * 9) - currentBetVal; 
         totalProfitLoss += winProfit;
 
-        lastWinLevelMsg = "=== CONGRATULATIONS ===\nLEVEL " + currentLevelExecuted + " WIN (+RS " + winProfit.toFixed(1) + ")\nWINNER: (" + actualNum + ")\n=== CONGRATULATIONS ===";
+        lastWinLevelMsg = "=== CONGRATULATIONS (JK) ===\nLEVEL " + currentLevelExecuted + " WIN (+RS " + winProfit.toFixed(1) + ")\nWINNER: (" + actualNum + ")\n=== CONGRATULATIONS ===";
         maintenanceLevel = 1; 
       } else {
         totalLosses++;
@@ -204,13 +184,6 @@ async function fetchWinGoData() {
         
         if (maintenanceLevel >= 10) {
           maintenanceLevel = 1; 
-          isCoolingDown = true;
-          lastWinLevelMsg += "\n\nLEVEL 10 REACHED! BOT IN COOLING PAUSE (1 MIN)...";
-          
-          setTimeout(() => {
-            isCoolingDown = false;
-            broadcastMessage("COOLING PERIOD COMPLETED. RESUMING PREDICTIONS FROM LEVEL 1.");
-          }, 60000);
         } else {
           maintenanceLevel++; 
         }
@@ -235,7 +208,7 @@ async function fetchWinGoData() {
       }
     }
 
-    if (nextPeriod !== lastSentPeriod && !isCoolingDown) {
+    if (nextPeriod !== lastSentPeriod) {
       let pred = advancedPatternEngine(list, maintenanceLevel);
       let profitSign = totalProfitLoss >= 0 ? "+RS " + totalProfitLoss.toFixed(2) : "-RS " + Math.abs(totalProfitLoss).toFixed(2);
       let currentBet = getBetVal(maintenanceLevel);
