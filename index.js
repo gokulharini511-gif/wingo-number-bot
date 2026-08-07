@@ -5,8 +5,10 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Configured Credentials
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
-const CHANNEL_ID = -1003310985903; 
+const CHANNEL_ID = '-1003310985903';
+const SCRAPINGANT_API_KEY = 'ffbc3803db954886adfaba6ac22b4b2a'; 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const API_ENDPOINTS = [
@@ -17,7 +19,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo Big & JK Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Ultra Hybrid Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,24 +31,26 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + JK Number Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Ultra Hybrid Engine Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
 let lastSentPeriod = "";
+let lastPredictedSize = "";
 let lastPredictedNumbers = [];
 let lastPredictedColor = "";
-let lastPredictedSize = "";
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
+let totalJackpots = 0;
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
 let predictionCount = 0;
 let maxLevelReached = 1;
 let prediction60History = [];
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
     1: { name: "₹1", val: 1 },
@@ -64,71 +68,58 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// Pure Big/Small & Number Engine (Color used internally for filtering)
-function pureBigAndJKEngine(history) {
+function ultraHybridEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (numbers.length < 10) return { size: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9" };
+        let results = numbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let isGreenNum = n => [1, 3, 7, 9].includes(n);
-        let isRedNum = n => [2, 4, 6, 8].includes(n);
-        let isBigNum = n => n >= 5;
-
-        let last1 = numbers[0];
-        let last2 = numbers[1];
-
-        // 1. Big/Small Trend Calculation
+        let r1 = results[0], r2 = results[1], r3 = results[2], r4 = results[3];
         let predictedSize = "BIG";
-        if (isBigNum(last1) === isBigNum(last2)) {
-            predictedSize = isBigNum(last1) ? "BIG" : "SMALL";
+
+        if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
+            predictedSize = r1 === "BIG" ? "SMALL" : "BIG"; 
+        } else if (r1 === r2) {
+            predictedSize = r1; 
         } else {
-            predictedSize = isBigNum(last1) ? "SMALL" : "BIG";
+            predictedSize = r1;
         }
 
-        // 2. Color Trend Calculation (Internal Only)
-        let last1Color = isGreenNum(last1) ? "GREEN" : (isRedNum(last1) ? "RED" : "VIOLET");
-        let last2Color = isGreenNum(last2) ? "GREEN" : (isRedNum(last2) ? "RED" : "VIOLET");
-
-        let predictedColor = "GREEN";
-        if (last1Color === last2Color && last1Color !== "VIOLET") {
-            predictedColor = last1Color;
-        } else {
-            predictedColor = (last1Color === "GREEN") ? "RED" : "GREEN";
-        }
-
-        // 3. 2-Number Selection using Size + Internal Color Support
+        const lastNum = numbers[0] !== undefined ? numbers[0] : 5;
         let candidates = [];
-        if (predictedSize === "BIG" && predictedColor === "GREEN") candidates = [7, 9];
-        else if (predictedSize === "BIG" && predictedColor === "RED") candidates = [6, 8];
-        else if (predictedSize === "SMALL" && predictedColor === "GREEN") candidates = [1, 3];
-        else candidates = [2, 4];
 
-        // Weightage Validation
+        if (predictedSize === "BIG") {
+            if ([5, 0].includes(lastNum)) candidates = [6, 8];
+            else if ([6, 1].includes(lastNum)) candidates = [7, 9];
+            else candidates = [7, 8];
+        } else {
+            if ([0, 5].includes(lastNum)) candidates = [1, 3];
+            else if ([1, 6].includes(lastNum)) candidates = [0, 2];
+            else candidates = [1, 2];
+        }
+
         let numScores = {};
         candidates.forEach(c => numScores[c] = 0);
-
         numbers.slice(0, 15).forEach((n, idx) => {
-            if (numScores[n] !== undefined) {
-                numScores[n] += (15 - idx);
-            }
+            if (numScores[n] !== undefined) numScores[n] += (15 - idx);
         });
 
-        let sorted = Object.keys(numScores).map(Number).sort((a, b) => numScores[b] - numScores[a]);
-        let matchedNumbers = sorted.slice(0, 2);
+        let matchedNumbers = Object.keys(numScores).map(Number).sort((a, b) => numScores[b] - numScores[a]).slice(0, 2);
+        if (matchedNumbers.length < 2) matchedNumbers = candidates;
 
-        if (matchedNumbers.length < 2) {
-            matchedNumbers = candidates;
-        }
+        let mainColor = predictedSize === "BIG" ? "GREEN" : "RED";
+        let colorStr = mainColor === "GREEN" ? "🟢 GREEN" : "🔴 RED";
+        if (matchedNumbers.includes(0)) colorStr = "🔴 RED / 🟣 VIOLET";
+        else if (matchedNumbers.includes(5)) colorStr = "🟢 GREEN / 🟣 VIOLET";
 
-        return { 
+        return {
             size: predictedSize,
-            color: predictedColor,
-            targetNumbers: matchedNumbers, 
-            numbersStr: matchedNumbers.join(", ") 
+            targetNumbers: matchedNumbers,
+            numbersStr: matchedNumbers.join(", "),
+            colorStr: colorStr,
+            mainColor: mainColor
         };
-
     } catch (e) {
-        return { size: "BIG", color: "GREEN", targetNumbers: [7, 9], numbersStr: "7, 9" };
+        return { size: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9", colorStr: "🟢 GREEN", mainColor: "GREEN" };
     }
 }
 
@@ -144,24 +135,24 @@ async function fetchWinGoData() {
         try {
             const res = await axios.get(url, {
                 timeout: 4000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-                    'Accept': 'application/json, text/plain, */*',
-                    'Referer': 'https://www.rajastake7.com/'
-                }
+                headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.rajastake7.com/' }
             });
-
-            let data = res.data;
-            if (typeof data === 'string') {
-                try { data = JSON.parse(data); } catch (e) {}
-            }
-
+            let data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
             let extractedList = data?.data?.list || data?.list || data?.data;
             if (Array.isArray(extractedList) && extractedList.length > 0) {
                 list = extractedList;
                 break;
             }
         } catch (err) {}
+    }
+
+    if (!list && SCRAPINGANT_API_KEY) {
+        try {
+            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(API_ENDPOINTS[0])}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
+            const response = await axios.get(scraperUrl, { timeout: 8000 });
+            let data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            list = data?.data?.list || data?.list;
+        } catch (e) {}
     }
 
     if (!list) {
@@ -182,99 +173,88 @@ async function fetchWinGoData() {
             let isNumberHit = lastPredictedNumbers.includes(actualNum);
             let isSizeHit = (lastPredictedSize === actualSize);
 
-            let currentLevelExecuted = maintenanceLevel;
-            let currentBetVal = getBetVal(currentLevelExecuted);
-
-            if (currentLevelExecuted > maxLevelReached) {
-                maxLevelReached = currentLevelExecuted;
-            }
-
+            let currentBetVal = getBetVal(maintenanceLevel);
+            if (maintenanceLevel > maxLevelReached) maxLevelReached = maintenanceLevel;
             predictionCount++;
 
             if (isNumberHit) {
                 totalWins++;
-                let singleBet = currentBetVal / 2;
-                let winProfit = (singleBet * 9) - currentBetVal; 
+                totalJackpots++;
+                levelWins[maintenanceLevel] = (levelWins[maintenanceLevel] || 0) + 1;
+                
+                let winProfit = ((currentBetVal / 2) * 9) - currentBetVal;
                 totalProfitLoss += winProfit;
 
-                dynamicStatusMsg = "🏆 **JK WINNER (" + actualNum + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")** 🏆";
-
-                prediction60History.unshift({ period: actualPeriod, status: "JK WINNER", level: currentLevelExecuted });
-                maintenanceLevel = 1; 
+                dynamicStatusMsg = "🏆 **JACKPOT NUMBER WIN (" + actualNum + ") LEVEL " + maintenanceLevel + " (+₹" + winProfit.toFixed(1) + ")** 🏆";
+                prediction60History.unshift({ period: actualPeriod, status: "JACKPOT WIN", level: maintenanceLevel });
+                maintenanceLevel = 1;
 
             } else if (isSizeHit) {
                 totalWins++;
+                levelWins[maintenanceLevel] = (levelWins[maintenanceLevel] || 0) + 1;
                 let winProfit = currentBetVal * 0.98;
                 totalProfitLoss += winProfit;
 
-                let winLabel = (actualSize === "BIG") ? "✨ BIG WINNER" : "✨ SMALL WINNER";
-                dynamicStatusMsg = winLabel + " (" + actualSize + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")";
-
-                prediction60History.unshift({ period: actualPeriod, status: actualSize + " WIN", level: currentLevelExecuted });
+                dynamicStatusMsg = "✨ **" + actualSize + " WINNER LEVEL " + maintenanceLevel + " (+₹" + winProfit.toFixed(1) + ")**";
+                prediction60History.unshift({ period: actualPeriod, status: actualSize + " WIN", level: maintenanceLevel });
                 maintenanceLevel = 1;
 
             } else {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (" + actualNum + " - " + actualSize + ") LEVEL " + currentLevelExecuted + "**";
-
-                prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
+                dynamicStatusMsg = "💔 **LOSS (" + actualNum + " - " + actualSize + ") LEVEL " + maintenanceLevel + "**";
+                prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: maintenanceLevel });
                 
-                if (maintenanceLevel >= 8) {
-                    maintenanceLevel = 1; 
-                } else {
-                    maintenanceLevel++; 
-                }
+                maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
             }
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
-                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
+                let summaryMsg = "📊 **60 PREDICTIONS ULTRA BATCH REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
-                                 "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                                 "🏆 **TOTAL WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + "\n" +
                                  "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
+                                 "🎯 **LEVEL-WISE WINS BREAKDOWN:**\n";
 
-                let recent10 = prediction60History.slice(0, 10);
-                recent10.forEach(item => {
+                for (let l = 1; l <= 8; l++) {
+                    summaryMsg += `🔹 LEVEL ${l} (${levelData[l].name}): ${levelWins[l] || 0} WINS\n`;
+                }
+
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n📝 **RECENT HISTORY (LAST 5):**\n";
+                prediction60History.slice(0, 5).forEach(item => {
                     let icon = item.status.includes("WIN") ? "✅" : "❌";
-                    summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
+                    summaryMsg += `${icon} \`${item.period}\`: ${item.status} (Level ${item.level})\n`;
                 });
 
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for next 60 rounds!**";
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats...**";
 
                 await safeSendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
-                predictionCount = 0;
-                totalWins = 0;
-                totalLosses = 0;
-                totalProfitLoss = 0;
-                maxLevelReached = 1;
-                prediction60History = [];
+                predictionCount = 0; totalWins = 0; totalLosses = 0; totalJackpots = 0;
+                totalProfitLoss = 0; maxLevelReached = 1; prediction60History = [];
+                levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
             }
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = pureBigAndJKEngine(list);
-            
-            let activeLevel = maintenanceLevel;
-            let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
-
+            let pred = ultraHybridEngine(list);
+            let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Big/Small + 2-Number Filtered)** ⚡\n" +
+            let msg = "👑 **KING ULTRA PREDICTION**\n" +
+                      "⚡ **WinGo 30S (Hybrid Engine)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                      "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + maintenanceLevel + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
@@ -282,8 +262,8 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **TOTAL WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
-                   "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
+                   "🏆 **WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                   "📊 **NET PROFIT:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
@@ -292,9 +272,8 @@ async function fetchWinGoData() {
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            lastPredictedColor = pred.color;
+            lastPredictedColor = pred.mainColor;
             lastPredictedSize = pred.size;
-            console.log("[SUCCESS] Processed Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
