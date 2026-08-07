@@ -6,11 +6,13 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
-// Updated New Channel ID
-const CHANNEL_ID = '-1003310985903';
+
+// உங்களுடைய Channel ID அல்லது Channel Public Username (எ.கா: '@mychannelname')
+const CHANNEL_ID = '-1003310985903'; 
+
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-// API Gateways
+// API Mirror Endpoints
 const API_ENDPOINTS = [
     'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
     'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
@@ -21,13 +23,17 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 app.get('/', (req, res) => res.send('WinGo 30S Smart Engine Active!'));
 
+async function safeSendMessage(chatId, text, options) {
+    try {
+        await bot.sendMessage(chatId, text, options);
+    } catch (err) {
+        console.error("Telegram Send Error:", err.message);
+    }
+}
+
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    try {
-        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
-    } catch (e) {
-        console.error("Startup Notification Error:", e.message);
-    }
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -60,7 +66,6 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// SMART 2-NUMBER ENGINE
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -122,7 +127,6 @@ async function fetchWinGoData() {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
-                    'Accept-Language': 'en-US,en;q=0.9',
                     'Referer': 'https://www.rajastake7.com/'
                 }
             });
@@ -137,9 +141,7 @@ async function fetchWinGoData() {
                 list = extractedList;
                 break;
             }
-        } catch (err) {
-            // Try next endpoint
-        }
+        } catch (err) {}
     }
 
     if (!list) {
@@ -169,7 +171,6 @@ async function fetchWinGoData() {
 
             if (isNumberHit) {
                 totalWins++;
-
                 let singleBet = currentBetVal / 2;
                 let winProfit = (singleBet * 9) - currentBetVal; 
                 totalProfitLoss += winProfit;
@@ -215,7 +216,7 @@ async function fetchWinGoData() {
 
                 summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for next 60 rounds!**";
 
-                await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
+                await safeSendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
                 predictionCount = 0;
                 totalWins = 0;
@@ -252,12 +253,12 @@ async function fetchWinGoData() {
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-            await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+            await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            console.log("[SUCCESS] Sent Prediction to " + CHANNEL_ID + " for Period: " + nextPeriod);
+            console.log("[SUCCESS] Processed Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
