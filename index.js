@@ -5,7 +5,8 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
+// Updated New Bot Token
+const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 
 // Updated Channel ID
 const CHANNEL_ID = -1003310985903; 
