@@ -25,6 +25,8 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (e) {
         console.error("Startup Notification Error:", e.message);
     }
+    // Server On ஆனவுடன் உடனடியாக முதல்முறை Data Fetch செய்ய
+    fetchWinGoData();
 });
 
 let lastSentPeriod = "";
@@ -68,12 +70,10 @@ function deepHistoryPatternEngine(history, currentLevel) {
         let recent15 = numbers.slice(0, 15);
         let last1 = numbers[0];
 
-        // 1. DYNAMIC HOT NUMBERS SCORING
         recent15.forEach(n => {
             if (n >= 0 && n <= 9) scores[n] += 4;
         });
 
-        // 2. PARITY MOMENTUM
         let oddCount = recent15.slice(0, 5).filter(n => n % 2 !== 0).length;
         if (oddCount >= 3) {
             [1, 3, 5, 7, 9].forEach(n => scores[n] += 15);
@@ -81,20 +81,16 @@ function deepHistoryPatternEngine(history, currentLevel) {
             [0, 2, 4, 6, 8].forEach(n => scores[n] += 15);
         }
 
-        // 3. MIRROR SHIFT RECOVERY
         let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
         if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 12;
 
-        // 4. STEP PATTERN (+2 / -2 Shift)
         scores[(last1 + 2) % 10] += 10;
         scores[(last1 + 8) % 10] += 10;
 
-        // 5. HIGH LEVEL RECOVERY SAFETY (Level 4+)
         if (currentLevel >= 4) {
             scores[(last1 + 5) % 10] += 20;
         }
 
-        // Direct repeat penalty
         scores[last1] -= 6;
 
         let sortedNumbers = Object.keys(scores)
@@ -144,6 +140,7 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
+            console.log("Data list is empty or invalid!");
             isFetching = false;
             return;
         }
@@ -194,7 +191,6 @@ async function fetchWinGoData() {
                 }
             }
 
-            // 60 Predictions Summary Report
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
