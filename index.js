@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo Big & Number Priority Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Big & JK Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + Number Main Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + JK Number Bot Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -64,11 +64,11 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// Main Algorithm: Focus Big/Small & Numbers (Color support)
-function bigAndNumberPriorityEngine(history) {
+// Pure Big/Small & Number Engine (Color used internally for filtering)
+function pureBigAndJKEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (numbers.length < 10) return { size: "BIG", color: "GREEN", targetNumbers: [7, 9], numbersStr: "7, 9" };
+        if (numbers.length < 10) return { size: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9" };
 
         let isGreenNum = n => [1, 3, 7, 9].includes(n);
         let isRedNum = n => [2, 4, 6, 8].includes(n);
@@ -77,7 +77,7 @@ function bigAndNumberPriorityEngine(history) {
         let last1 = numbers[0];
         let last2 = numbers[1];
 
-        // 1. Primary: Big/Small Trend Analysis
+        // 1. Big/Small Trend Calculation
         let predictedSize = "BIG";
         if (isBigNum(last1) === isBigNum(last2)) {
             predictedSize = isBigNum(last1) ? "BIG" : "SMALL";
@@ -85,7 +85,7 @@ function bigAndNumberPriorityEngine(history) {
             predictedSize = isBigNum(last1) ? "SMALL" : "BIG";
         }
 
-        // 2. Secondary/Support: Color Trend Analysis
+        // 2. Color Trend Calculation (Internal Only)
         let last1Color = isGreenNum(last1) ? "GREEN" : (isRedNum(last1) ? "RED" : "VIOLET");
         let last2Color = isGreenNum(last2) ? "GREEN" : (isRedNum(last2) ? "RED" : "VIOLET");
 
@@ -96,14 +96,14 @@ function bigAndNumberPriorityEngine(history) {
             predictedColor = (last1Color === "GREEN") ? "RED" : "GREEN";
         }
 
-        // 3. Filter 2 Target Numbers using Big/Small + Color Support
+        // 3. 2-Number Selection using Size + Internal Color Support
         let candidates = [];
         if (predictedSize === "BIG" && predictedColor === "GREEN") candidates = [7, 9];
         else if (predictedSize === "BIG" && predictedColor === "RED") candidates = [6, 8];
         else if (predictedSize === "SMALL" && predictedColor === "GREEN") candidates = [1, 3];
         else candidates = [2, 4];
 
-        // History Score Validation
+        // Weightage Validation
         let numScores = {};
         candidates.forEach(c => numScores[c] = 0);
 
@@ -122,7 +122,7 @@ function bigAndNumberPriorityEngine(history) {
 
         return { 
             size: predictedSize,
-            color: predictedColor, 
+            color: predictedColor,
             targetNumbers: matchedNumbers, 
             numbersStr: matchedNumbers.join(", ") 
         };
@@ -173,8 +173,6 @@ async function fetchWinGoData() {
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
         let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
-        
-        let actualColor = [1, 3, 7, 9].includes(actualNum) ? "GREEN" : ([2, 4, 6, 8].includes(actualNum) ? "RED" : "VIOLET");
         let actualSize = (actualNum >= 5) ? "BIG" : "SMALL";
 
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -183,7 +181,6 @@ async function fetchWinGoData() {
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
             let isNumberHit = lastPredictedNumbers.includes(actualNum);
             let isSizeHit = (lastPredictedSize === actualSize);
-            let isColorHit = (lastPredictedColor === actualColor);
 
             let currentLevelExecuted = maintenanceLevel;
             let currentBetVal = getBetVal(currentLevelExecuted);
@@ -214,16 +211,6 @@ async function fetchWinGoData() {
                 dynamicStatusMsg = winLabel + " (" + actualSize + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")";
 
                 prediction60History.unshift({ period: actualPeriod, status: actualSize + " WIN", level: currentLevelExecuted });
-                maintenanceLevel = 1;
-
-            } else if (isColorHit) {
-                totalWins++;
-                let winProfit = currentBetVal * 0.98;
-                totalProfitLoss += winProfit;
-
-                dynamicStatusMsg = "🎉 **COLOR WINNER (" + actualColor + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")** 🎉";
-
-                prediction60History.unshift({ period: actualPeriod, status: "COLOR WIN", level: currentLevelExecuted });
                 maintenanceLevel = 1;
 
             } else {
@@ -274,7 +261,7 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = bigAndNumberPriorityEngine(list);
+            let pred = pureBigAndJKEngine(list);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
@@ -282,12 +269,11 @@ async function fetchWinGoData() {
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Big/Small & 2-Number Priority)** ⚡\n" +
+                      "⚡ **WinGo 30S (Big/Small + 2-Number Filtered)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                      "🎨 **COLOR (SUPPORT):** `" + pred.color + "`\n" +
                       "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
