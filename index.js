@@ -7,10 +7,14 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-
-// API Target URL
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=30&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+
+// API Gateways (Primary & Fallback Mirrors)
+const API_ENDPOINTS = [
+    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
+    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
+    'https://draw.ar-lottery03.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1'
+];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
@@ -55,39 +59,40 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
+// SMART 2-NUMBER ENGINE
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (numbers.length < 10) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
+        if (numbers.length < 5) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
 
         let scores = {};
         for (let i = 0; i <= 9; i++) scores[i] = 0;
 
-        let recent15 = numbers.slice(0, 15);
+        let recent = numbers.slice(0, 10);
         let last1 = numbers[0];
 
-        recent15.forEach(n => {
+        recent.forEach(n => {
             if (n >= 0 && n <= 9) scores[n] += 4;
         });
 
-        let oddCount = recent15.slice(0, 5).filter(n => n % 2 !== 0).length;
+        let oddCount = recent.slice(0, 5).filter(n => n % 2 !== 0).length;
         if (oddCount >= 3) {
-            [1, 3, 5, 7, 9].forEach(n => scores[n] += 15);
+            [1, 3, 5, 7, 9].forEach(n => scores[n] += 12);
         } else {
-            [0, 2, 4, 6, 8].forEach(n => scores[n] += 15);
+            [0, 2, 4, 6, 8].forEach(n => scores[n] += 12);
         }
 
         let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-        if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 12;
+        if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 10;
 
-        scores[(last1 + 2) % 10] += 10;
-        scores[(last1 + 8) % 10] += 10;
+        scores[(last1 + 2) % 10] += 8;
+        scores[(last1 + 8) % 10] += 8;
 
         if (currentLevel >= 4) {
-            scores[(last1 + 5) % 10] += 20;
+            scores[(last1 + 5) % 10] += 15;
         }
 
-        scores[last1] -= 6;
+        scores[last1] -= 5;
 
         let sortedNumbers = Object.keys(scores)
             .map(Number)
@@ -107,43 +112,42 @@ async function fetchWinGoData() {
     if (isFetching) return;
     isFetching = true;
 
-    try {
-        let rawContent = null;
+    let list = null;
 
-        // Method 1: Direct Request with Browser Headers
+    // Direct Browser Request - Rotate Mirrors if blocked
+    for (let url of API_ENDPOINTS) {
         try {
-            const directRes = await axios.get(TARGET_URL, {
-                timeout: 5000,
+            const res = await axios.get(url, {
+                timeout: 4000,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
-                    'Origin': 'https://www.rajastake7.com',
+                    'Accept-Language': 'en-US,en;q=0.9',
                     'Referer': 'https://www.rajastake7.com/'
                 }
             });
-            rawContent = directRes.data;
-        } catch (err) {
-            // Method 2: Public Proxy Fallback (If Direct Request Fails)
-            try {
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
-                const response = await axios.get(proxyUrl, { timeout: 6000 });
-                rawContent = response.data;
-            } catch (e) {
-                console.error("[FETCH FAILED] All gateways failed.");
+
+            let data = res.data;
+            if (typeof data === 'string') {
+                try { data = JSON.parse(data); } catch (e) {}
             }
+
+            let extractedList = data?.data?.list || data?.list || data?.data;
+            if (Array.isArray(extractedList) && extractedList.length > 0) {
+                list = extractedList;
+                break; // Found valid data
+            }
+        } catch (err) {
+            // Try next endpoint
         }
+    }
 
-        if (typeof rawContent === 'string') {
-            try { rawContent = JSON.parse(rawContent); } catch (e) {}
-        }
+    if (!list) {
+        isFetching = false;
+        return;
+    }
 
-        let list = rawContent?.data?.list || rawContent?.list || rawContent?.data || (Array.isArray(rawContent) ? rawContent : null);
-
-        if (!list || !Array.isArray(list) || list.length === 0) {
-            isFetching = false;
-            return;
-        }
-
+    try {
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
         let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
@@ -253,10 +257,10 @@ async function fetchWinGoData() {
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            console.log("[SUCCESS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[SUCCESS] Sent Prediction for Period: " + nextPeriod);
         }
     } catch (error) {
-        console.error('[FETCH ERROR]:', error.message);
+        console.error('[PROCESS ERROR]:', error.message);
     } finally {
         isFetching = false;
     }
