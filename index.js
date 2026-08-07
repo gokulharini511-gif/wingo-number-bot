@@ -1,162 +1,267 @@
-const express = require('express');
 const axios = require('axios');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
 const app = express();
+const PORT = process.env.PORT || 10000;
 
-app.use(express.json());
+const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
+const SCRAPINGANT_API_KEY = '9b7eaf7431374b2089e3f778b8504522'; 
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=120&pageNo=1';
 
-// Configuration
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const CHANNEL_ID = '-1003310985903'; 
 
-// Bot State & Metrics Tracking
-let totalPredictions = 0;
+const bot = new TelegramBot(BOT_TOKEN, { 
+  polling: {
+    autoStart: true,
+    params: { timeout: 10 }
+  } 
+});
+
+bot.on('polling_error', (error) => {
+  if (error.code === 'ETELEGRAM' && error.message.includes('409 Conflict')) {
+    console.log("Conflict error detected, retrying cleanly...");
+  }
+});
+
+app.get('/', (req, res) => res.send('WinGo 30S Pure Trend & Zone Engine Active!'));
+app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
+
+let lastSentPeriod = "";
+let lastPredictedNumbers = [];
+let lastPredictedPeriod = null;
 let totalWins = 0;
-let totalJackpots = 0;
 let totalLosses = 0;
-let currentLevel = 1;
-let maxLevelReached = 1;
-let netProfitLoss = 0;
+let maintenanceLevel = 1;
+let totalProfitLoss = 0;
+let predictionCount = 0;
+let lastWinLevelMsg = "None";
+let isCoolingDown = false;
 
-// Batch Data History Storage
-let currentBatchHistory = [];
-let recentNumbersHistory = [];
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0 };
 
-// Helper function to send Telegram Message
-async function sendTelegramMessage(message) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-    try {
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            chat_id: TELEGRAM_CHAT_ID,
-            text: message,
-            parse_mode: 'Markdown'
-        });
-    } catch (error) {
-        console.error("Telegram Send Error:", error.message);
+const levelData = {
+  1: { val: 2 },
+  2: { val: 4 },
+  3: { val: 6 },
+  4: { val: 10 },
+  5: { val: 16 },
+  6: { val: 24 },
+  7: { val: 40 },
+  8: { val: 70 },
+  9: { val: 120 },
+  10: { val: 200 }
+};
+
+function getBetVal(level) {
+  return levelData[level] ? levelData[level].val : 2;
+}
+
+// PURE TREND & ZONE ALIGNMENT PREDICTION ENGINE
+function advancedPatternEngine(history, currentLevel) {
+  try {
+    let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
+    if (numbers.length < 15) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
+
+    let last1 = numbers[0];
+    let last2 = numbers[1];
+    let last3 = numbers[2];
+
+    let recent10 = numbers.slice(0, 10);
+    let highCount = recent10.filter(n => n >= 5).length;
+
+    let targetZone = "BIG"; // Default Zone
+
+    // 1. ZIG-ZAG / ALTERNATING ZONE DETECTION
+    let isZoneAlternating = ((last1 >= 5) !== (last2 >= 5)) && ((last2 >= 5) !== (last3 >= 5));
+
+    if (isZoneAlternating) {
+      // மாறி மாறி வந்தால், கடைசி எண் Big என்றால் அடுத்தது Small, இல்லை என்றால் Big
+      targetZone = (last1 >= 5) ? "SMALL" : "BIG";
+    } else {
+      // 2. STREAK / MOMENTUM TREND DETECTION
+      if (highCount >= 5) {
+        targetZone = "BIG";
+      } else {
+        targetZone = "SMALL";
+      }
     }
-}
 
-// Function to reset batch stats
-function resetBatchStats() {
-    totalWins = 0;
-    totalJackpots = 0;
-    totalLosses = 0;
-    maxLevelReached = 1;
-    netProfitLoss = 0;
-    currentBatchHistory = [];
-}
+    // 3. LEVEL RECOVERY ADJUSTMENT (Higher Levels Focus On Safe High Frequency)
+    if (currentLevel >= 3) {
+      let isLastBig = last1 >= 5;
+      targetZone = isLastBig ? "BIG" : "SMALL";
+    }
 
-// Strict 2-Number Target Logic
-function getExactTwoTargetNumbers(history) {
-    if (history.length < 5) return [7, 9];
-
-    const last5 = history.slice(-5);
-    const lastNum = history[history.length - 1];
+    // Zone எண்களின் அடிப்படையில் Score வழங்குதல்
+    let scores = {};
+    let candidateNumbers = (targetZone === "BIG") ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    let bigCount = 0;
-    let smallCount = 0;
+    candidateNumbers.forEach(n => scores[n] = 0);
 
-    last5.forEach(num => {
-        if (num >= 5) bigCount++; else smallCount++;
+    // Dynamic Hot Scoring in Target Zone
+    numbers.slice(0, 15).forEach(num => {
+      if (candidateNumbers.includes(num)) {
+        scores[num] += 5;
+      }
     });
 
-    const isBigTrend = bigCount >= smallCount;
-
-    if (isBigTrend) {
-        if (lastNum === 5 || lastNum === 0) return [7, 9];
-        if (lastNum === 6 || lastNum === 1) return [6, 8];
-        if (lastNum === 7 || lastNum === 2) return [7, 9];
-        return [5, 8];
-    } else {
-        if (lastNum === 0 || lastNum === 5) return [1, 3];
-        if (lastNum === 1 || lastNum === 6) return [0, 2];
-        if (lastNum === 2 || lastNum === 7) return [1, 3];
-        return [0, 4];
+    // Mirror Shift Scoring
+    let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
+    let mirrorTarget = mirrorMap[last1];
+    if (candidateNumbers.includes(mirrorTarget)) {
+      scores[mirrorTarget] += 10;
     }
+
+    // Direct repeat score reduction (ஒரே எண் மீண்டும் வருவதைக் குறைக்க)
+    if (candidateNumbers.includes(last1)) {
+      scores[last1] -= 8;
+    }
+
+    let sortedNumbers = Object.keys(scores)
+      .map(Number)
+      .sort((a, b) => scores[b] - scores[a]);
+
+    let matchedNumbers = sortedNumbers.slice(0, 2);
+    return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
+  } catch (e) {
+    return { targetNumbers: [0, 2], numbersStr: "0, 2" };
+  }
 }
 
-// Webhook Route
-app.post('/webhook', async (req, res) => {
+async function broadcastMessage(msgText) {
+  try {
+    await bot.sendMessage(CHANNEL_ID, msgText, { parse_mode: 'Markdown' });
+  } catch (e) {
+    console.error(`Failed to send message to Channel (${CHANNEL_ID}):`, e.message);
+  }
+}
+
+let isFetching = false;
+
+async function fetchWinGoData() {
+  if (isFetching) return;
+  isFetching = true;
+
+  try {
+    let rawContent = null;
     try {
-        const data = req.body;
-        
-        if (!data || !data.period || data.resultNumber === undefined) {
-            return res.status(400).send([0, 0]);
+      const directRes = await axios.get(TARGET_URL, {
+        timeout: 8000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Referer': 'https://www.rajastake7.com/'
         }
-
-        totalPredictions++;
-        const currentBatchNumber = totalPredictions;
-        const resultNum = parseInt(data.resultNumber);
-
-        recentNumbersHistory.push(resultNum);
-        if (recentNumbersHistory.length > 20) recentNumbersHistory.shift();
-
-        // Get ONLY 2 target numbers
-        const targetNumbers = getExactTwoTargetNumbers(recentNumbersHistory);
-
-        const isWin = data.isWin || false; 
-        const isJackpot = data.isJackpot || false;
-        const profitAmount = data.profit || 0;
-
-        if (isWin) {
-            totalWins++;
-            if (isJackpot) totalJackpots++;
-            netProfitLoss += profitAmount;
-            currentLevel = 1;
-        } else {
-            totalLosses++;
-            netProfitLoss -= profitAmount;
-            currentLevel++;
-            if (currentLevel > maxLevelReached) {
-                maxLevelReached = currentLevel;
-            }
-        }
-
-        const roundStatus = isWin ? (isJackpot ? "💥 JACKPOT" : "✅ WIN") : "❌ LOSS";
-        currentBatchHistory.push({
-            batchIndex: currentBatchNumber,
-            period: data.period,
-            status: roundStatus,
-            level: currentLevel,
-            targets: targetNumbers.join(',')
-        });
-
-        // Telegram Report at 60, 120, 180...
-        if (totalPredictions % 60 === 0) {
-            const startRange = totalPredictions - 59;
-            const endRange = totalPredictions;
-
-            let reportText = `📊 **BATCH SUMMARY REPORT (${startRange} TO ${endRange})** 📊\n`;
-            reportText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-            reportText += `🎯 **TOTAL PREDICTIONS:** 60\n`;
-            reportText += `🏆 **TOTAL WINS:** ${totalWins}\n`;
-            reportText += `💥 **TOTAL JACKPOTS:** ${totalJackpots}\n`;
-            reportText += `💔 **TOTAL LOSSES:** ${totalLosses}\n`;
-            reportText += `📈 **MAX LEVEL REACHED:** Level ${maxLevelReached}\n`;
-            reportText += `💰 **NET PROFIT / LOSS:** ${netProfitLoss >= 0 ? '+' : ''}₹${netProfitLoss.toFixed(2)}\n`;
-            reportText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-            reportText += `📝 **FULL BATCH HISTORY (${startRange}-${endRange}):**\n\n`;
-
-            currentBatchHistory.forEach((item) => {
-                reportText += `${item.status} | Period: ${item.period} | Targets: [${item.targets}] | Lvl: ${item.level}\n`;
-            });
-
-            reportText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-            reportText += `🔄 Batch ${startRange}-${endRange} Completed!`;
-
-            await sendTelegramMessage(reportText);
-            resetBatchStats();
-        }
-
-        // Returns ONLY the 2 target numbers (e.g. [7, 9] or [1, 3])
-        return res.status(200).json(targetNumbers);
-
-    } catch (error) {
-        console.error("Webhook Error:", error);
-        return res.status(500).json([0, 0]);
+      });
+      rawContent = directRes.data;
+    } catch (err) {
+      try {
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
+        const response = await axios.get(scraperUrl, { timeout: 8000 });
+        rawContent = response.data;
+      } catch (e) {}
     }
-});
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+    if (typeof rawContent === 'string') {
+      try { rawContent = JSON.parse(rawContent); } catch (e) {}
+    }
+
+    let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
+    if (!list || !Array.isArray(list) || list.length === 0) {
+      isFetching = false;
+      return;
+    }
+
+    let lastItem = list[0];
+    let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
+    let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
+    let nextPeriod = String(BigInt(actualPeriod) + 1n);
+
+    if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod && !isCoolingDown) {
+      let isNumberHit = lastPredictedNumbers.includes(actualNum);
+      let currentLevelExecuted = maintenanceLevel;
+      let currentBetVal = getBetVal(currentLevelExecuted);
+
+      predictionCount++;
+
+      if (isNumberHit) {
+        totalWins++;
+        if (levelWins[currentLevelExecuted] !== undefined) {
+          levelWins[currentLevelExecuted]++;
+        }
+        
+        let singleBet = currentBetVal / 2;
+        let winProfit = (singleBet * 9) - currentBetVal; 
+        totalProfitLoss += winProfit;
+
+        lastWinLevelMsg = "=== CONGRATULATIONS ===\nLEVEL " + currentLevelExecuted + " WIN (+RS " + winProfit.toFixed(1) + ")\nWINNER: (" + actualNum + ")\n=== CONGRATULATIONS ===";
+        maintenanceLevel = 1; 
+      } else {
+        totalLosses++;
+        totalProfitLoss -= currentBetVal;
+        
+        lastWinLevelMsg = "LEVEL " + currentLevelExecuted + " LOSS (-RS " + currentBetVal + ")\nRESULT: (" + actualNum + ")";
+        
+        if (maintenanceLevel >= 10) {
+          maintenanceLevel = 1; 
+          isCoolingDown = true;
+          lastWinLevelMsg += "\n\nLEVEL 10 REACHED! BOT IN COOLING PAUSE (1 MIN)...";
+          
+          setTimeout(() => {
+            isCoolingDown = false;
+            broadcastMessage("COOLING PERIOD COMPLETED. RESUMING PREDICTIONS FROM LEVEL 1.");
+          }, 60000);
+        } else {
+          maintenanceLevel++; 
+        }
+      }
+
+      if (predictionCount % 60 === 0) {
+        let levelReport = "";
+        for (let lvl in levelWins) {
+          if (levelWins[lvl] > 0) levelReport += `• Level ${lvl} Wins: ${levelWins[lvl]}\n`;
+        }
+
+        let reportMsg = "60 PREDICTIONS SUMMARY REPORT\n" +
+          "--------------------\n" +
+          "TOTAL ROUNDS: " + predictionCount + "\n" +
+          "TOTAL WINS: " + totalWins + "\n" +
+          "TOTAL LOSSES: " + totalLosses + "\n" +
+          "OVERALL PROFIT/LOSS: " + (totalProfitLoss >= 0 ? "+RS " : "-RS ") + Math.abs(totalProfitLoss).toFixed(2) + "\n" +
+          "--------------------\n" +
+          "LEVEL WINS STATS:\n" + levelReport;
+
+        await broadcastMessage(reportMsg);
+      }
+    }
+
+    if (nextPeriod !== lastSentPeriod && !isCoolingDown) {
+      let pred = advancedPatternEngine(list, maintenanceLevel);
+      let profitSign = totalProfitLoss >= 0 ? "+RS " + totalProfitLoss.toFixed(2) : "-RS " + Math.abs(totalProfitLoss).toFixed(2);
+      let currentBet = getBetVal(maintenanceLevel);
+
+      let msg = "PURE 2-NUMBER PREDICTION\n\n" +
+        "PERIOD: `" + nextPeriod + "`\n" +
+        "TARGET NUMBERS: `" + pred.numbersStr + "`\n" +
+        "LEVEL " + maintenanceLevel + ": RS " + currentBet + " (RS " + (currentBet/2) + " EACH)\n" +
+        "WINS: " + totalWins + " | LOSSES: " + totalLosses + "\n\n" +
+        "LAST RESULT:\n" + lastWinLevelMsg + "\n\n" +
+        "OVERALL PROFIT: `" + profitSign + "`";
+
+      await broadcastMessage(msg);
+
+      lastSentPeriod = nextPeriod;
+      lastPredictedPeriod = nextPeriod;
+      lastPredictedNumbers = pred.targetNumbers;
+    }
+  } catch (error) {
+    console.error('[FETCH ERROR]:', error.message);
+  } finally {
+    isFetching = false;
+  }
+}
+
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
+
+setInterval(fetchWinGoData, 3000);
