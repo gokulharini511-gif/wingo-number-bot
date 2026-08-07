@@ -7,10 +7,9 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
-// Reduced pageSize to 50 to prevent API blocking
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
+// API Target URL
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=30&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
@@ -111,23 +110,26 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
+        // Method 1: Direct Request with Browser Headers
         try {
             const directRes = await axios.get(TARGET_URL, {
-                timeout: 8000,
+                timeout: 5000,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                     'Accept': 'application/json, text/plain, */*',
+                    'Origin': 'https://www.rajastake7.com',
                     'Referer': 'https://www.rajastake7.com/'
                 }
             });
             rawContent = directRes.data;
         } catch (err) {
+            // Method 2: Public Proxy Fallback (If Direct Request Fails)
             try {
-                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
-                const response = await axios.get(scraperUrl, { timeout: 10000 });
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
+                const response = await axios.get(proxyUrl, { timeout: 6000 });
                 rawContent = response.data;
             } catch (e) {
-                console.error("Scraper Proxy failed:", e.message);
+                console.error("[FETCH FAILED] All gateways failed.");
             }
         }
 
@@ -138,7 +140,6 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || rawContent?.data || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Retrying API Fetch...");
             isFetching = false;
             return;
         }
@@ -252,7 +253,7 @@ async function fetchWinGoData() {
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[SUCCESS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
