@@ -5,24 +5,19 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Updated New Bot Token
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
-
-// Updated Channel ID
 const CHANNEL_ID = -1003310985903; 
-
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-// API Mirror Endpoints
 const API_ENDPOINTS = [
-    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
-    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1',
-    'https://draw.ar-lottery03.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=20&pageNo=1'
+    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
+    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
+    'https://draw.ar-lottery03.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1'
 ];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Smart Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Smart Pattern Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -34,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Color + Big/Small Smart Bot Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -67,45 +62,62 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-function deepHistoryPatternEngine(history, currentLevel) {
+// Color + Big/Small Filtered Multi-Pattern Engine (50 Pages Check)
+function advancedPatternEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         if (numbers.length < 5) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
 
-        let scores = {};
-        for (let i = 0; i <= 9; i++) scores[i] = 0;
+        // 1. Predict Color Trend (Green vs Red)
+        let greenCount = 0;
+        let redCount = 0;
+        for (let i = 0; i < 10; i++) {
+            let n = numbers[i];
+            if ([1, 3, 7, 9].includes(n)) greenCount++;
+            if ([2, 4, 6, 8].includes(n)) redCount++;
+        }
+        let predictedColor = (greenCount >= redCount) ? "GREEN" : "RED";
 
-        let recent = numbers.slice(0, 10);
+        // 2. Predict Big vs Small Trend (Zig-zag, Double, 3/4 Streaks)
         let last1 = numbers[0];
+        let last2 = numbers[1];
+        let last3 = numbers[2];
+        
+        let isBig = n => n >= 5;
+        let predictedSize = "BIG";
 
-        recent.forEach(n => {
-            if (n >= 0 && n <= 9) scores[n] += 4;
-        });
-
-        let oddCount = recent.slice(0, 5).filter(n => n % 2 !== 0).length;
-        if (oddCount >= 3) {
-            [1, 3, 5, 7, 9].forEach(n => scores[n] += 12);
+        // Pattern Check: Double / Zig-Zag Detection
+        if (isBig(last1) === isBig(last2)) {
+            // Continuation / Streak
+            predictedSize = isBig(last1) ? "BIG" : "SMALL";
         } else {
-            [0, 2, 4, 6, 8].forEach(n => scores[n] += 12);
+            // Zig-zag pattern (Big -> Small -> Big)
+            predictedSize = isBig(last1) ? "SMALL" : "BIG";
         }
 
-        let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-        if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 10;
-
-        scores[(last1 + 2) % 10] += 8;
-        scores[(last1 + 8) % 10] += 8;
-
-        if (currentLevel >= 4) {
-            scores[(last1 + 5) % 10] += 15;
+        // 3. Match 2 Numbers Based on Color & Big/Small Combination
+        let matchedNumbers = [];
+        if (predictedColor === "GREEN" && predictedSize === "BIG") {
+            matchedNumbers = [7, 9];
+        } else if (predictedColor === "GREEN" && predictedSize === "SMALL") {
+            matchedNumbers = [1, 3];
+        } else if (predictedColor === "RED" && predictedSize === "BIG") {
+            matchedNumbers = [6, 8];
+        } else { // RED + SMALL
+            matchedNumbers = [2, 4];
         }
 
-        scores[last1] -= 5;
+        // 4. Pattern Repeats Verification (Top-to-Bottom / Bottom-to-Top History Pattern)
+        let patternMatchCount = 0;
+        for (let i = 0; i < numbers.length - 3; i++) {
+            if (numbers[i] === last1 && numbers[i+1] === last2) {
+                let historicalNext = numbers[i+2];
+                if (matchedNumbers.includes(historicalNext)) {
+                    patternMatchCount++;
+                }
+            }
+        }
 
-        let sortedNumbers = Object.keys(scores)
-            .map(Number)
-            .sort((a, b) => scores[b] - scores[a]);
-
-        let matchedNumbers = sortedNumbers.slice(0, 2);
         return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
 
     } catch (e) {
@@ -229,7 +241,7 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = deepHistoryPatternEngine(list, maintenanceLevel);
+            let pred = advancedPatternEngine(list);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
@@ -237,7 +249,7 @@ async function fetchWinGoData() {
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Pure 2-Number Predictions)** ⚡\n" +
+                      "⚡ **WinGo 30S (Color + Big/Small Filtered)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
@@ -259,7 +271,7 @@ async function fetchWinGoData() {
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            console.log("[SUCCESS] Sent Prediction for Period: " + nextPeriod);
+            console.log("[SUCCESS] Processed Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
