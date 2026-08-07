@@ -7,8 +7,8 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 
-// Updated with your Public Channel Username
-const CHANNEL_ID = '@LIFEOFWINFREE'; 
+// Updated Channel ID
+const CHANNEL_ID = -1003310985903; 
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -258,7 +258,7 @@ async function fetchWinGoData() {
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
-            console.log("[SUCCESS] Sent Prediction to " + CHANNEL_ID + " for Period: " + nextPeriod);
+            console.log("[SUCCESS] Sent Prediction for Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
