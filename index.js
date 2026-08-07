@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo Ultra Accuracy High-Win Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 2-Number Precision Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo High Win-Ratio Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 2-Number Precision Bot Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -62,11 +62,11 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// 4-Number High Accuracy Hybrid Pattern Engine
-function highWinPatternEngine(history) {
+// Strictly Pure 2-Number Precision Algorithm
+function precisionTwoNumberEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (numbers.length < 10) return { targetNumbers: [1, 3, 7, 9], numbersStr: "1, 3, 7, 9" };
+        if (numbers.length < 10) return { targetNumbers: [1, 3], numbersStr: "1, 3" };
 
         let scores = {};
         for (let i = 0; i <= 9; i++) scores[i] = 0;
@@ -74,46 +74,53 @@ function highWinPatternEngine(history) {
         let last1 = numbers[0];
         let last2 = numbers[1];
 
-        // 1. Hot Numbers Score (Last 20 Rounds)
-        numbers.slice(0, 20).forEach((n, idx) => {
+        // 1. Hot Weightage (Last 15 Rounds)
+        numbers.slice(0, 15).forEach((n, idx) => {
             if (n >= 0 && n <= 9) {
-                scores[n] += (20 - idx); // Recent numbers get maximum weightage
+                scores[n] += (15 - idx) * 2;
             }
         });
 
-        // 2. Trend Mirror & Sequence Logic
-        let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
-        if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 15;
-
-        // Neighbor numbers prediction
-        scores[(last1 + 1) % 10] += 12;
-        scores[(last1 + 9) % 10] += 12;
-        scores[(last1 + 2) % 10] += 10;
-        scores[(last1 + 8) % 10] += 10;
-
-        // Big/Small Trend Boost
+        // 2. Color & Trend Analysis
         let isBig = n => n >= 5;
-        if (isBig(last1) === isBig(last2)) { // Continuous Streak
-            let targetRange = isBig(last1) ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-            targetRange.forEach(n => scores[n] += 10);
-        } else { // Zig-zag Pattern
-            let targetRange = isBig(last1) ? [0, 1, 2, 3, 4] : [5, 6, 7, 8, 9];
-            targetRange.forEach(n => scores[n] += 10);
+        let isGreen = n => [1, 3, 7, 9].includes(n);
+
+        let greenCount = numbers.slice(0, 8).filter(isGreen).length;
+        let targetColorGreen = greenCount >= 4;
+
+        if (isBig(last1) === isBig(last2)) {
+            // Continuation / Dragon Pattern
+            let range = isBig(last1) ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
+            range.forEach(n => scores[n] += 15);
+        } else {
+            // Alternate / Zig-zag Pattern
+            let range = isBig(last1) ? [0, 1, 2, 3, 4] : [5, 6, 7, 8, 9];
+            range.forEach(n => scores[n] += 15);
         }
 
-        // Penalty for extremely immediate repeated number
-        scores[last1] -= 8;
+        // Color alignment boost
+        for (let i = 0; i <= 9; i++) {
+            if (targetColorGreen && isGreen(i)) scores[i] += 10;
+            if (!targetColorGreen && !isGreen(i)) scores[i] += 10;
+        }
 
-        // Pick Top 4 Highest Scoring Numbers for Maximum Win Ratio
+        // Mirror check
+        let mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
+        if (mirrorMap[last1] !== undefined) scores[mirrorMap[last1]] += 12;
+
+        // Reduce score for immediate duplicate
+        scores[last1] -= 10;
+
+        // Sort and select STRICTLY TOP 2 NUMBERS ONLY
         let sortedNumbers = Object.keys(scores)
             .map(Number)
             .sort((a, b) => scores[b] - scores[a]);
 
-        let matchedNumbers = sortedNumbers.slice(0, 4);
+        let matchedNumbers = sortedNumbers.slice(0, 2);
         return { targetNumbers: matchedNumbers, numbersStr: matchedNumbers.join(", ") };
 
     } catch (e) {
-        return { targetNumbers: [1, 3, 7, 9], numbersStr: "1, 3, 7, 9" };
+        return { targetNumbers: [1, 3], numbersStr: "1, 3" };
     }
 }
 
@@ -176,8 +183,7 @@ async function fetchWinGoData() {
 
             if (isNumberHit) {
                 totalWins++;
-                // 4-number split calculation
-                let singleBet = currentBetVal / 4;
+                let singleBet = currentBetVal / 2;
                 let winProfit = (singleBet * 9) - currentBetVal; 
                 totalProfitLoss += winProfit;
 
@@ -234,7 +240,7 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = highWinPatternEngine(list);
+            let pred = precisionTwoNumberEngine(list);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
@@ -242,7 +248,7 @@ async function fetchWinGoData() {
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (4-Number Ultra High Accuracy)** ⚡\n" +
+                      "⚡ **WinGo 30S (Pure 2-Number Precision)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
