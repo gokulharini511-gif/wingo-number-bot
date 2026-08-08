@@ -7,7 +7,8 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 
-const PREDICTION_CHANNEL = '-1003293600118';
+// Both Channels Included for Predictions
+const PREDICTION_CHANNELS = ['-1003293600118', '-1003310985903'];
 const REPORT_ONLY_CHANNEL = '-1003345976502';
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -20,16 +21,18 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 async function sendPredictionToChannels(message, options = {}) {
-    try {
-        await bot.sendMessage(PREDICTION_CHANNEL, message, options);
-    } catch (e) {
-        console.error(`Error sending prediction to channel ${PREDICTION_CHANNEL}:`, e.message);
+    for (const channelId of PREDICTION_CHANNELS) {
+        try {
+            await bot.sendMessage(channelId, message, options);
+        } catch (e) {
+            console.error(`Error sending prediction to channel ${channelId}:`, e.message);
+        }
     }
 }
 
 async function sendReportToAllChannels(message, options = {}) {
-    const channels = [PREDICTION_CHANNEL, REPORT_ONLY_CHANNEL];
-    for (const channelId of channels) {
+    const allChannels = [...PREDICTION_CHANNELS, REPORT_ONLY_CHANNEL];
+    for (const channelId of allChannels) {
         try {
             await bot.sendMessage(channelId, message, options);
         } catch (e) {
@@ -38,7 +41,7 @@ async function sendReportToAllChannels(message, options = {}) {
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Multi-Channel Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo Pro Bot Active on Multiple Channels!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -92,7 +95,6 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Advanced Trick Engine: 4-Number Internal Analysis filtering down to Top 2 Numbers Output
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -106,42 +108,22 @@ function deepHistoryPatternEngine(history) {
 
         let predResult = "";
 
-        // Advanced Pattern & Trend Analysis
         if (r1 === r2 && r2 === r3) {
-            predResult = r1; // Dragon Trend
+            predResult = r1; 
         } else if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
-            predResult = r1 === "BIG" ? "SMALL" : "BIG"; // Zig-Zag Reversal Trick
+            predResult = r1 === "BIG" ? "SMALL" : "BIG"; 
         } else {
             let bigCount = [r1, r2, r3, r4, r5].filter(x => x === "BIG").length;
             predResult = bigCount >= 3 ? "BIG" : "SMALL";
         }
 
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
-        let internalFourNumbers = [];
-
-        // Step 1: Internal 4-Number Matrix Generation
-        if (predResult === "BIG") {
-            if ([5, 0].includes(lastNum)) internalFourNumbers = [5, 6, 8, 9];
-            else if ([6, 1].includes(lastNum)) internalFourNumbers = [6, 7, 8, 9];
-            else if ([7, 2].includes(lastNum)) internalFourNumbers = [5, 7, 8, 9];
-            else if ([8, 3].includes(lastNum)) internalFourNumbers = [6, 7, 8, 9];
-            else internalFourNumbers = [5, 6, 7, 8];
-        } else {
-            if ([0, 5].includes(lastNum)) internalFourNumbers = [0, 1, 2, 3];
-            else if ([1, 6].includes(lastNum)) internalFourNumbers = [0, 1, 2, 4];
-            else if ([2, 7].includes(lastNum)) internalFourNumbers = [1, 2, 3, 4];
-            else if ([3, 8].includes(lastNum)) internalFourNumbers = [0, 1, 3, 4];
-            else internalFourNumbers = [0, 1, 2, 3];
-        }
-
-        // Step 2: Intelligent filtering - Picking the absolute best 2 numbers from the 4 numbers for high win rate
         let bestTwoNumbers = [];
+
         if (predResult === "BIG") {
-            // Filter most frequent high-prob ending digits for BIG
             if (lastNum % 2 === 0) bestTwoNumbers = [6, 8];
             else bestTwoNumbers = [7, 9];
         } else {
-            // Filter most frequent high-prob ending digits for SMALL
             if (lastNum % 2 === 0) bestTwoNumbers = [0, 2];
             else bestTwoNumbers = [1, 3];
         }
@@ -327,7 +309,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " to prediction channel (" + predictionCount + "/60)");
+            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " to all prediction channels (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[API FETCH ERROR]:', error.message);
