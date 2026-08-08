@@ -41,6 +41,7 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
+let totalJkWins = 0; // JK Wins கவுன்டர் சேர்க்கப்பட்டுள்ளது
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
@@ -64,7 +65,6 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// Pure Big/Small & Number Engine (Color used internally for filtering)
 function pureBigAndJKEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -77,7 +77,6 @@ function pureBigAndJKEngine(history) {
         let last1 = numbers[0];
         let last2 = numbers[1];
 
-        // 1. Big/Small Trend Calculation
         let predictedSize = "BIG";
         if (isBigNum(last1) === isBigNum(last2)) {
             predictedSize = isBigNum(last1) ? "BIG" : "SMALL";
@@ -85,7 +84,6 @@ function pureBigAndJKEngine(history) {
             predictedSize = isBigNum(last1) ? "SMALL" : "BIG";
         }
 
-        // 2. Color Trend Calculation (Internal Only)
         let last1Color = isGreenNum(last1) ? "GREEN" : (isRedNum(last1) ? "RED" : "VIOLET");
         let last2Color = isGreenNum(last2) ? "GREEN" : (isRedNum(last2) ? "RED" : "VIOLET");
 
@@ -96,14 +94,12 @@ function pureBigAndJKEngine(history) {
             predictedColor = (last1Color === "GREEN") ? "RED" : "GREEN";
         }
 
-        // 3. 2-Number Selection using Size + Internal Color Support
         let candidates = [];
         if (predictedSize === "BIG" && predictedColor === "GREEN") candidates = [7, 9];
         else if (predictedSize === "BIG" && predictedColor === "RED") candidates = [6, 8];
         else if (predictedSize === "SMALL" && predictedColor === "GREEN") candidates = [1, 3];
         else candidates = [2, 4];
 
-        // Weightage Validation
         let numScores = {};
         candidates.forEach(c => numScores[c] = 0);
 
@@ -193,6 +189,7 @@ async function fetchWinGoData() {
 
             if (isNumberHit) {
                 totalWins++;
+                totalJkWins++; // JK Win எண்ணike அதிகரிக்கப்படும்
                 let singleBet = currentBetVal / 2;
                 let winProfit = (singleBet * 9) - currentBetVal; 
                 totalProfitLoss += winProfit;
@@ -235,6 +232,7 @@ async function fetchWinGoData() {
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                                 "🎯 **JK WINS:** " + totalJkWins + "\n" +
                                  "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
@@ -254,6 +252,7 @@ async function fetchWinGoData() {
                 predictionCount = 0;
                 totalWins = 0;
                 totalLosses = 0;
+                totalJkWins = 0;
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
                 prediction60History = [];
@@ -281,8 +280,11 @@ async function fetchWinGoData() {
                 msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
             }
 
+            // Wins, Losses களுக்குக் கீழே JK Wins சேர்க்கப்பட்டுள்ளது
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **TOTAL WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                   "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                   "🎯 **JK WINS:** " + totalJkWins + "\n" +
+                   "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
@@ -307,3 +309,4 @@ process.on('uncaughtException', (err) => console.error('Uncaught Exception:', er
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
 setInterval(fetchWinGoData, 3000);
+```[cite: 1]
