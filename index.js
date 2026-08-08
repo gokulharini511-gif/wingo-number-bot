@@ -9,15 +9,16 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const CHANNEL_ID = -1003310985903; 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
+// Updated with pageSize=60 for deeper pattern analysis
 const API_ENDPOINTS = [
-    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=15&pageNo=1',
-    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=15&pageNo=1',
+    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=60&pageNo=1',
+    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=60&pageNo=1',
     'https://api.rajastake7.com/api/web/game/winGo/getHistoryList?type=30'
 ];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Clean Stable Engine Active'));
+app.get('/', (req, res) => res.send('WinGo 30S 60-Data Strict Engine Active'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +30,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Clean Engine Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S 60-Data Strict Engine Live...**", { parse_mode: 'Markdown' });
     setInterval(apiPeriodEngine, 500);
 });
 
@@ -57,11 +58,12 @@ function getBetVal(level) {
     return levelData[level]?.val || Math.pow(3, level - 1);
 }
 
+// 60-Data Pattern Analysis Logic
 function calculatePattern(history) {
     try {
-        if (history && history.length >= 5) {
+        if (history && history.length >= 10) {
             let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-            let sizes = numbers.slice(0, 5).map(n => n >= 5 ? "BIG" : "SMALL");
+            let sizes = numbers.slice(0, 10).map(n => n >= 5 ? "BIG" : "SMALL");
 
             let n1 = numbers[0];
 
@@ -78,7 +80,7 @@ function calculatePattern(history) {
             }
 
             let bigCount = sizes.filter(s => s === "BIG").length;
-            let chosenSize = bigCount >= 3 ? "SMALL" : "BIG";
+            let chosenSize = bigCount >= 6 ? "SMALL" : "BIG";
             let numStr = chosenSize === "BIG" ? "8 9" : "0 4";
             return { size: chosenSize, numbersStr: numStr };
         }
@@ -99,6 +101,7 @@ async function apiPeriodEngine() {
         let now = new Date();
         let secondInCycle = now.getUTCSeconds() % 30;
 
+        // Fetch 60 records during early cycle seconds
         if (secondInCycle <= 3 || !cachedHistory) {
             for (let url of API_ENDPOINTS) {
                 try {
@@ -118,6 +121,7 @@ async function apiPeriodEngine() {
             let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
             let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
 
+            // Process Win/Loss evaluation strictly once per period update
             if (pendingPrediction && pendingPrediction.period === latestApiPeriod) {
                 let isSizeHit = (pendingPrediction.size === actualSize);
                 let currentBet = getBetVal(maintenanceLevel);
@@ -136,6 +140,7 @@ async function apiPeriodEngine() {
 
             let nextTargetPeriodFull = String(BigInt(latestApiPeriod) + 1n);
 
+            // Send strict single prediction at 28th second without duplicate triggers
             if (secondInCycle >= 28 && nextTargetPeriodFull !== lastSentPeriod) {
                 let pred = calculatePattern(cachedHistory);
 
@@ -163,7 +168,7 @@ async function apiPeriodEngine() {
                     size: pred.size
                 };
 
-                console.log(`[CLEAN SENT] Target Period: ${nextTargetPeriodFull}`);
+                console.log(`[STRICT 60-DATA SENT] Target Period: ${nextTargetPeriodFull}`);
             }
         }
 
