@@ -10,14 +10,14 @@ const CHANNEL_ID = -1003310985903;
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const API_ENDPOINTS = [
-    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=15&pageNo=1',
-    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=15&pageNo=1',
+    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=10&pageNo=1',
+    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=10&pageNo=1',
     'https://api.rajastake7.com/api/web/game/winGo/getHistoryList?type=30'
 ];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('Clean WinGo Engine Active'));
+app.get('/', (req, res) => res.send('WinGo 30S 2-Sec Timing Engine Active'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,11 +29,27 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Prediction Engine Started...**", { parse_mode: 'Markdown' });
-    setInterval(cleanEngine, 100);
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Engine Live...**", { parse_mode: 'Markdown' });
+    
+    // Updated setInterval to 500ms
+    setInterval(exact2SecEngine, 500);
 });
 
 let lastSentPeriod = "";
+let cachedHistory = null;
+
+function getExact30SPeriod(offsetSeconds = 0) {
+    let now = new Date();
+    let totalSeconds = Math.floor(now.getTime() / 1000) + offsetSeconds;
+    let periodIndex = Math.floor(totalSeconds / 30);
+    
+    let date = new Date(totalSeconds * 1000);
+    let year = date.getUTCFullYear();
+    let month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    let day = String(date.getUTCDate()).padStart(2, '0');
+    
+    return `${year}${month}${day}3000${10000 + (periodIndex % 2880)}`;
+}
 
 function calculatePattern(history) {
     try {
@@ -58,53 +74,47 @@ function calculatePattern(history) {
 
 let isRunning = false;
 
-async function cleanEngine() {
+async function exact2SecEngine() {
     if (isRunning) return;
     isRunning = true;
 
     try {
-        let historyList = null;
+        let now = new Date();
+        let secondInCycle = now.getUTCSeconds() % 30;
 
-        for (let url of API_ENDPOINTS) {
-            try {
-                const res = await axios.get(url, { 
-                    timeout: 800,
-                    headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' }
-                });
-                let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
-                if (Array.isArray(extracted) && extracted.length > 0) {
-                    historyList = extracted;
-                    break;
-                }
-            } catch (err) {}
+        if (secondInCycle <= 3) {
+            for (let url of API_ENDPOINTS) {
+                try {
+                    // Updated axios timeout to 2000ms
+                    const res = await axios.get(url, { timeout: 2000 });
+                    let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
+                    if (Array.isArray(extracted) && extracted.length > 0) {
+                        cachedHistory = extracted;
+                        break;
+                    }
+                } catch (err) {}
+            }
         }
 
-        if (!historyList || historyList.length === 0) {
-            isRunning = false;
-            return;
-        }
+        if (secondInCycle >= 28) {
+            let targetPeriod = getExact30SPeriod(30);
 
-        let latestItem = historyList[0];
-        let latestApiPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
+            if (targetPeriod !== lastSentPeriod) {
+                let pred = calculatePattern(cachedHistory);
 
-        // Next Period (+2 Offset to sync with live timer)
-        let nextTargetPeriod = String(BigInt(latestApiPeriod) + 2n);
+                let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "📌 **PERIOD:** `" + targetPeriod + "`\n" +
+                          "📏 **PREDICTION:** `" + pred.size + "`\n" +
+                          "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-        if (nextTargetPeriod !== lastSentPeriod) {
-            let pred = calculatePattern(historyList);
+                await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
-            let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "📌 **PERIOD:** `" + nextTargetPeriod + "`\n" +
-                      "📏 **PREDICTION:** `" + pred.size + "`\n" +
-                      "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "🔗 **Register Link:**\n" + REGISTER_LINK;
-
-            await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
-
-            lastSentPeriod = nextTargetPeriod;
-            console.log(`[PREDICTION SENT] Target Period: ${nextTargetPeriod}`);
+                lastSentPeriod = targetPeriod;
+                console.log(`[SENT 2S BEFORE] Target Period: ${targetPeriod} at cycle second: ${secondInCycle}`);
+            }
         }
 
     } catch (err) {
