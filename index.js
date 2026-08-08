@@ -6,7 +6,9 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
-const CHANNEL_IDS = ['-1003293600118', '-1003310985903'];
+
+// நீங்கள் கேட்ட புதிய சேனல் ஐடி மற்றும் மற்ற சேனல் (மொத்தம் 2 சேனல்கள்)
+const CHANNEL_IDS = ['-1003345976502', '-1003310985903'];
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
