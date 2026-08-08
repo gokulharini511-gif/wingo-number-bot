@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo High Frequency Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo High Speed 10s Trigger Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + JK Number Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Ultra Fast 10-Sec Engine Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -64,7 +64,7 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// Frequency-Based 2-Number Engine
+// Frequency-Based Engine
 function frequencyBasedEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -74,7 +74,6 @@ function frequencyBasedEngine(history) {
         let last1 = numbers[0];
         let last2 = numbers[1];
 
-        // 1. Big/Small Trend Prediction
         let predictedSize = "BIG";
         if (isBigNum(last1) === isBigNum(last2)) {
             predictedSize = isBigNum(last1) ? "BIG" : "SMALL";
@@ -82,10 +81,8 @@ function frequencyBasedEngine(history) {
             predictedSize = isBigNum(last1) ? "SMALL" : "BIG";
         }
 
-        // 2. Candidate Pool Based on Predicted Size
         let candidates = predictedSize === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
 
-        // 3. Count Occurrences (Frequency) in Last 30 Rounds
         let freqMap = {};
         candidates.forEach(c => freqMap[c] = { count: 0, lastSeenIndex: 999 });
 
@@ -99,7 +96,6 @@ function frequencyBasedEngine(history) {
             }
         });
 
-        // Sort: Highest Count First -> Most Recent First
         candidates.sort((a, b) => {
             if (freqMap[b].count !== freqMap[a].count) {
                 return freqMap[b].count - freqMap[a].count;
@@ -131,7 +127,7 @@ async function fetchWinGoData() {
     for (let url of API_ENDPOINTS) {
         try {
             const res = await axios.get(url, {
-                timeout: 4000,
+                timeout: 2000, 
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
@@ -166,6 +162,7 @@ async function fetchWinGoData() {
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
         let dynamicStatusMsg = "";
 
+        // Check Winner Logic
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
             let isNumberHit = lastPredictedNumbers.includes(actualNum);
             let isSizeHit = (lastPredictedSize === actualSize);
@@ -260,8 +257,8 @@ async function fetchWinGoData() {
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Frequency High-Occurrence Engine)** ⚡\n" +
+            let msg = "👑 **KING PREDICTION (FAST 10S TRIGGER)**\n" +
+                      "⚡ **WinGo 30S High Speed Engine** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
@@ -286,7 +283,7 @@ async function fetchWinGoData() {
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedSize = pred.size;
-            console.log("[SUCCESS] Processed Period: " + nextPeriod);
+            console.log("[SUCCESS] Fast Processed Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
@@ -298,5 +295,5 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// 15 seconds delay (15000ms)
-setInterval(fetchWinGoData, 15000);
+// 1 Second Speed Checking Loop for 10-Sec High Priority Push
+setInterval(fetchWinGoData, 1000);
