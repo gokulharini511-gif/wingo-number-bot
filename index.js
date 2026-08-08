@@ -5,10 +5,11 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
+// நீங்கள் கேட்ட புதிய டெலிகிராம் டோக்கன்
+const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 
-// முதல் சேனல் நீக்கப்பட்டு, கடைசி 2 சேனல்கள் மட்டும் வைக்கப்பட்டுள்ளது (முன்னால் '-' கட்டாயம் இருக்க வேண்டும்)
-const CHANNEL_IDS = ['-1003310985903', '-1002486828817'];
+// நீங்கள் கேட்ட இரண்டு சேனல்களின் ஐடிகள்
+const CHANNEL_IDS = ['-1003293600118', '-1003310985903'];
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
@@ -314,3 +315,4 @@ async function startContinuousLoop() {
 
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
+```[cite: 1]
