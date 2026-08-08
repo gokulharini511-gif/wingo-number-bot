@@ -5,20 +5,19 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Your configured credentials
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const CHANNEL_ID = -1003310985903; 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const API_ENDPOINTS = [
-    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=60&pageNo=1',
-    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=60&pageNo=1',
-    'https://api.rajastake7.com/api/web/game/winGo/getHistoryList?type=30'
+    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
+    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
+    'https://draw.ar-lottery03.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1'
 ];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Optimized Engine Active'));
+app.get('/', (req, res) => res.send('WinGo Big & JK Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -30,18 +29,24 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Optimized Engine Live...**", { parse_mode: 'Markdown' });
-    setInterval(apiPeriodEngine, 1000);
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + JK Number Bot Live...**", { parse_mode: 'Markdown' });
+    fetchWinGoData();
 });
 
 let lastSentPeriod = "";
-let pendingPrediction = null;
-let cachedHistory = null;
+let lastPredictedNumbers = [];
+let lastPredictedColor = "";
+let lastPredictedSize = "";
+let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
+
+let predictionCount = 0;
+let maxLevelReached = 1;
+let prediction60History = [];
 
 const levelData = {
     1: { name: "₹1", val: 1 },
@@ -55,122 +60,250 @@ const levelData = {
 };
 
 function getBetVal(level) {
-    return levelData[level]?.val || Math.pow(3, level - 1);
+    if (levelData[level]) return levelData[level].val;
+    return Math.pow(3, level - 1);
 }
 
-function calculatePattern(history) {
+// Pure Big/Small & Number Engine (Color used internally for filtering)
+function pureBigAndJKEngine(history) {
     try {
-        if (history && history.length >= 10) {
-            let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-            let sizes = numbers.slice(0, 10).map(n => n >= 5 ? "BIG" : "SMALL");
+        let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
+        if (numbers.length < 10) return { size: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9" };
 
-            let n1 = numbers[0];
+        let isGreenNum = n => [1, 3, 7, 9].includes(n);
+        let isRedNum = n => [2, 4, 6, 8].includes(n);
+        let isBigNum = n => n >= 5;
 
-            if (sizes[0] === sizes[1]) {
-                let chosenSize = sizes[0];
-                let numStr = chosenSize === "BIG" ? (n1 % 2 === 0 ? "6 8" : "7 9") : (n1 % 2 === 0 ? "0 2" : "1 3");
-                return { size: chosenSize, numbersStr: numStr };
-            }
+        let last1 = numbers[0];
+        let last2 = numbers[1];
 
-            if (sizes[0] !== sizes[1] && sizes[1] !== sizes[2]) {
-                let chosenSize = sizes[0] === "BIG" ? "SMALL" : "BIG";
-                let numStr = chosenSize === "BIG" ? "5 7" : "2 4";
-                return { size: chosenSize, numbersStr: numStr };
-            }
-
-            let bigCount = sizes.filter(s => s === "BIG").length;
-            let chosenSize = bigCount >= 6 ? "SMALL" : "BIG";
-            let numStr = chosenSize === "BIG" ? "8 9" : "0 4";
-            return { size: chosenSize, numbersStr: numStr };
-        }
-    } catch (e) {}
-
-    let randomSize = Math.random() >= 0.5 ? "BIG" : "SMALL";
-    let randomNumStr = randomSize === "BIG" ? "7 9" : "1 3";
-    return { size: randomSize, numbersStr: randomNumStr };
-}
-
-let isRunning = false;
-
-async function apiPeriodEngine() {
-    if (isRunning) return;
-    isRunning = true;
-
-    try {
-        let now = new Date();
-        let secondInCycle = now.getUTCSeconds() % 30;
-
-        if (secondInCycle <= 3 || !cachedHistory) {
-            for (let url of API_ENDPOINTS) {
-                try {
-                    const res = await axios.get(url, { timeout: 2000 });
-                    let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
-                    if (Array.isArray(extracted) && extracted.length > 0) {
-                        cachedHistory = extracted;
-                        break;
-                    }
-                } catch (err) {}
-            }
+        // 1. Big/Small Trend Calculation
+        let predictedSize = "BIG";
+        if (isBigNum(last1) === isBigNum(last2)) {
+            predictedSize = isBigNum(last1) ? "BIG" : "SMALL";
+        } else {
+            predictedSize = isBigNum(last1) ? "SMALL" : "BIG";
         }
 
-        if (cachedHistory && cachedHistory.length > 0) {
-            let latestItem = cachedHistory[0];
-            let latestApiPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
-            let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
-            let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
+        // 2. Color Trend Calculation (Internal Only)
+        let last1Color = isGreenNum(last1) ? "GREEN" : (isRedNum(last1) ? "RED" : "VIOLET");
+        let last2Color = isGreenNum(last2) ? "GREEN" : (isRedNum(last2) ? "RED" : "VIOLET");
 
-            if (pendingPrediction && pendingPrediction.period === latestApiPeriod) {
-                let isSizeHit = (pendingPrediction.size === actualSize);
-                let currentBet = getBetVal(maintenanceLevel);
-
-                if (isSizeHit) {
-                    totalWins++;
-                    totalProfitLoss += (currentBet * 0.98);
-                    maintenanceLevel = 1;
-                } else {
-                    totalLosses++;
-                    totalProfitLoss -= currentBet;
-                    maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
-                }
-                pendingPrediction = null;
-            }
-
-            let nextTargetPeriodFull = String(BigInt(latestApiPeriod) + 1n);
-
-            if (secondInCycle >= 28 && nextTargetPeriodFull !== lastSentPeriod) {
-                let pred = calculatePattern(cachedHistory);
-
-                let activeLevel = maintenanceLevel;
-                let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
-                let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-
-                let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n" +
-                          "📌 **PERIOD:** `" + nextTargetPeriodFull + "`\n" +
-                          "📏 **PREDICTION:** `" + pred.size + "`\n" +
-                          "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                          "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n" +
-                          "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
-                          "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n" +
-                          "🔗 **Register Link:**\n" + REGISTER_LINK;
-
-                await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
-
-                lastSentPeriod = nextTargetPeriodFull;
-                pendingPrediction = {
-                    period: nextTargetPeriodFull,
-                    size: pred.size
-                };
-
-                console.log(`[OPTIMIZED SENT] Target Period: ${nextTargetPeriodFull}`);
-            }
+        let predictedColor = "GREEN";
+        if (last1Color === last2Color && last1Color !== "VIOLET") {
+            predictedColor = last1Color;
+        } else {
+            predictedColor = (last1Color === "GREEN") ? "RED" : "GREEN";
         }
 
-    } catch (err) {
-        console.error("Engine Error:", err.message);
-    } finally {
-        isRunning = false;
+        // 3. 2-Number Selection using Size + Internal Color Support
+        let candidates = [];
+        if (predictedSize === "BIG" && predictedColor === "GREEN") candidates = [7, 9];
+        else if (predictedSize === "BIG" && predictedColor === "RED") candidates = [6, 8];
+        else if (predictedSize === "SMALL" && predictedColor === "GREEN") candidates = [1, 3];
+        else candidates = [2, 4];
+
+        // Weightage Validation
+        let numScores = {};
+        candidates.forEach(c => numScores[c] = 0);
+
+        numbers.slice(0, 15).forEach((n, idx) => {
+            if (numScores[n] !== undefined) {
+                numScores[n] += (15 - idx);
+            }
+        });
+
+        let sorted = Object.keys(numScores).map(Number).sort((a, b) => numScores[b] - numScores[a]);
+        let matchedNumbers = sorted.slice(0, 2);
+
+        if (matchedNumbers.length < 2) {
+            matchedNumbers = candidates;
+        }
+
+        return { 
+            size: predictedSize,
+            color: predictedColor,
+            targetNumbers: matchedNumbers, 
+            numbersStr: matchedNumbers.join(", ") 
+        };
+
+    } catch (e) {
+        return { size: "BIG", color: "GREEN", targetNumbers: [7, 9], numbersStr: "7, 9" };
     }
 }
+
+let isFetching = false;
+
+async function fetchWinGoData() {
+    if (isFetching) return;
+    isFetching = true;
+
+    let list = null;
+
+    for (let url of API_ENDPOINTS) {
+        try {
+            const res = await axios.get(url, {
+                timeout: 4000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Referer': 'https://www.rajastake7.com/'
+                }
+            });
+
+            let data = res.data;
+            if (typeof data === 'string') {
+                try { data = JSON.parse(data); } catch (e) {}
+            }
+
+            let extractedList = data?.data?.list || data?.list || data?.data;
+            if (Array.isArray(extractedList) && extractedList.length > 0) {
+                list = extractedList;
+                break;
+            }
+        } catch (err) {}
+    }
+
+    if (!list) {
+        isFetching = false;
+        return;
+    }
+
+    try {
+        let lastItem = list[0];
+        let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
+        let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
+        let actualSize = (actualNum >= 5) ? "BIG" : "SMALL";
+
+        let nextPeriod = String(BigInt(actualPeriod) + 1n);
+        let dynamicStatusMsg = "";
+
+        if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+            let isNumberHit = lastPredictedNumbers.includes(actualNum);
+            let isSizeHit = (lastPredictedSize === actualSize);
+
+            let currentLevelExecuted = maintenanceLevel;
+            let currentBetVal = getBetVal(currentLevelExecuted);
+
+            if (currentLevelExecuted > maxLevelReached) {
+                maxLevelReached = currentLevelExecuted;
+            }
+
+            predictionCount++;
+
+            if (isNumberHit) {
+                totalWins++;
+                let singleBet = currentBetVal / 2;
+                let winProfit = (singleBet * 9) - currentBetVal; 
+                totalProfitLoss += winProfit;
+
+                dynamicStatusMsg = "🏆 **JK WINNER (" + actualNum + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")** 🏆";
+
+                prediction60History.unshift({ period: actualPeriod, status: "JK WINNER", level: currentLevelExecuted });
+                maintenanceLevel = 1; 
+
+            } else if (isSizeHit) {
+                totalWins++;
+                let winProfit = currentBetVal * 0.98;
+                totalProfitLoss += winProfit;
+
+                let winLabel = (actualSize === "BIG") ? "✨ BIG WINNER" : "✨ SMALL WINNER";
+                dynamicStatusMsg = winLabel + " (" + actualSize + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")";
+
+                prediction60History.unshift({ period: actualPeriod, status: actualSize + " WIN", level: currentLevelExecuted });
+                maintenanceLevel = 1;
+
+            } else {
+                totalLosses++;
+                totalProfitLoss -= currentBetVal;
+
+                dynamicStatusMsg = "💔 **LOSS (" + actualNum + " - " + actualSize + ") LEVEL " + currentLevelExecuted + "**";
+
+                prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
+                
+                if (maintenanceLevel >= 8) {
+                    maintenanceLevel = 1; 
+                } else {
+                    maintenanceLevel++; 
+                }
+            }
+
+            if (predictionCount >= 60) {
+                let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+                
+                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "🎯 **TOTAL PREDICTIONS:** 60\n" +
+                                 "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                                 "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
+                                 "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
+                                 "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
+
+                let recent10 = prediction60History.slice(0, 10);
+                recent10.forEach(item => {
+                    let icon = item.status.includes("WIN") ? "✅" : "❌";
+                    summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
+                });
+
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for next 60 rounds!**";
+
+                await safeSendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
+
+                predictionCount = 0;
+                totalWins = 0;
+                totalLosses = 0;
+                totalProfitLoss = 0;
+                maxLevelReached = 1;
+                prediction60History = [];
+            }
+        }
+
+        if (nextPeriod !== lastSentPeriod) {
+            let pred = pureBigAndJKEngine(list);
+            
+            let activeLevel = maintenanceLevel;
+            let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
+
+            let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+
+            let msg = "👑 **KING PREDICTION**\n" +
+                      "⚡ **WinGo 30S (Big/Small + 2-Number Filtered)** ⚡\n" +
+                      "━━━━━━━━━━━━━━━━━━━━━\n" +
+                      "📌 **PERIOD:** `" + nextPeriod + "`\n" +
+                      "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
+                      "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                      "━━━━━━━━━━━━━━━━━━━━━\n";
+
+            if (dynamicStatusMsg !== "") {
+                msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+            }
+
+            msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
+                   "🏆 **TOTAL WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                   "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
+                   "━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   "🔗 **Register Link:**\n" + REGISTER_LINK;
+
+            await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+
+            lastSentPeriod = nextPeriod;
+            lastPredictedPeriod = nextPeriod;
+            lastPredictedNumbers = pred.targetNumbers;
+            lastPredictedColor = pred.color;
+            lastPredictedSize = pred.size;
+            console.log("[SUCCESS] Processed Period: " + nextPeriod);
+        }
+    } catch (error) {
+        console.error('[PROCESS ERROR]:', error.message);
+    } finally {
+        isFetching = false;
+    }
+}
+
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
+
+setInterval(fetchWinGoData, 3000);
