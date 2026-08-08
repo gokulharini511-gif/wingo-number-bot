@@ -10,7 +10,7 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const PREDICTION_CHANNELS = ['-1003293600118', '-1003310985903'];
 const REPORT_ONLY_CHANNEL = '-1003345976502';
 
-// pageSize=2000 for deep historical pattern analysis
+// pageSize=2000 for deep historical analysis
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=2000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 
@@ -41,12 +41,12 @@ async function sendReportToAllChannels(message, options = {}) {
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo Smart Last-Number Dynamic Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo Direct Trend Pure Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await sendPredictionToChannels("🚀 **WinGo Smart Last-Number Dynamic Bot Live...**", { parse_mode: 'Markdown' });
+        await sendPredictionToChannels("🚀 **WinGo Direct Trend Pure Bot Live...**", { parse_mode: 'Markdown' });
         await bot.sendMessage(REPORT_ONLY_CHANNEL, "🚀 **WinGo Report Bot Live...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Error:", e.message);
@@ -95,61 +95,20 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Last-Number Dynamic Engine + Direct Big/Small Mirroring
-function smartLastNumberPatternEngine(history) {
+// Direct Trend Engine: Exactly mirrors immediate last result (Big -> Big, Small -> Small)
+function directTrendEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let r1 = allResults[0];
-        let r2 = allResults[1];
-        let r3 = allResults[2];
-        let r4 = allResults[3];
-        let r5 = allResults[4];
+        // Direct follow of the immediate last result
+        let predResult = allResults[0];
 
-        let predResult = "";
-
-        // Direct Pattern Mirroring (Big -> Big, Small -> Small, with Breakout Handling)
-        let isDragonBreaking = (r1 !== r2 && r2 === r3 && r3 === r4 && r4 === r5);
-        let isZigZagActive = (r1 !== r2 && r2 !== r3 && r3 !== r4);
-        let isDoubleActive = (r1 === r2 && r3 === r4 && r1 !== r3);
-
-        if (isDragonBreaking) {
-            predResult = r1;
-        } else if (r1 === r2 && r2 === r3) {
-            predResult = r1;
-        } else if (isZigZagActive) {
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-        } else if (isDoubleActive) {
-            predResult = r1;
-        } else {
-            predResult = r1; // Direct follow
-        }
-
-        const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let bestTwoNumbers = [];
-
-        // Dynamic Number selection based on Last Actual Number type & predicted result
         if (predResult === "BIG") {
-            if (lastNum === 6 || lastNum === 8) {
-                bestTwoNumbers = [6, 8];
-            } else if (lastNum === 7 || lastNum === 9) {
-                bestTwoNumbers = [7, 9];
-            } else if (lastNum % 2 === 0) {
-                bestTwoNumbers = [6, 8];
-            } else {
-                bestTwoNumbers = [7, 9];
-            }
+            bestTwoNumbers = [6, 8];
         } else {
-            if (lastNum === 0 || lastNum === 2) {
-                bestTwoNumbers = [0, 2];
-            } else if (lastNum === 1 || lastNum === 3) {
-                bestTwoNumbers = [1, 3];
-            } else if (lastNum % 2 === 0) {
-                bestTwoNumbers = [0, 2];
-            } else {
-                bestTwoNumbers = [1, 3];
-            }
+            bestTwoNumbers = [0, 2];
         }
 
         let numbersStr = bestTwoNumbers.join(", ");
@@ -241,7 +200,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **SHIFTING TO LEVEL " + (maintenanceLevel + 1) + "**";
+                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **MOVING TO LEVEL " + (maintenanceLevel + 1) + "**";
 
                 maintenanceLevel++; 
             }
@@ -283,14 +242,14 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = smartLastNumberPatternEngine(list);
+            let pred = directTrendEngine(list);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
 
             let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "🔥 **WINGO 30S LAST-NUMBER SMART PREDICTION** 🔥\n" +
+            let msg = "🔥 **WINGO 30S DIRECT TREND PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎲 **BET:** **" + pred.predResult + "**\n" +
