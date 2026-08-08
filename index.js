@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S 2-Digit Trend Engine Active'));
+app.get('/', (req, res) => res.send('WinGo 30S Clean Stable Engine Active'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,12 +29,13 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S 2-Digit Trend Engine Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Clean Engine Live...**", { parse_mode: 'Markdown' });
     setInterval(apiPeriodEngine, 500);
 });
 
 let lastSentPeriod = "";
 let pendingPrediction = null;
+let cachedHistory = null;
 
 let totalWins = 0;
 let totalLosses = 0;
@@ -56,7 +57,6 @@ function getBetVal(level) {
     return levelData[level]?.val || Math.pow(3, level - 1);
 }
 
-// 2-Digit Pattern & Trend Analysis
 function calculatePattern(history) {
     try {
         if (history && history.length >= 5) {
@@ -64,9 +64,7 @@ function calculatePattern(history) {
             let sizes = numbers.slice(0, 5).map(n => n >= 5 ? "BIG" : "SMALL");
 
             let n1 = numbers[0];
-            let isBig = n => n >= 5;
 
-            // Trend Based Pattern Logic (Giving 2-digit combinations as requested)
             if (sizes[0] === sizes[1]) {
                 let chosenSize = sizes[0];
                 let numStr = chosenSize === "BIG" ? (n1 % 2 === 0 ? "6 8" : "7 9") : (n1 % 2 === 0 ? "0 2" : "1 3");
@@ -98,79 +96,75 @@ async function apiPeriodEngine() {
     isRunning = true;
 
     try {
-        let historyList = null;
+        let now = new Date();
+        let secondInCycle = now.getUTCSeconds() % 30;
 
-        for (let url of API_ENDPOINTS) {
-            try {
-                const res = await axios.get(url, { timeout: 2000 });
-                let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
-                if (Array.isArray(extracted) && extracted.length > 0) {
-                    historyList = extracted;
-                    break;
-                }
-            } catch (err) {}
-        }
-
-        if (!historyList || historyList.length === 0) {
-            isRunning = false;
-            return;
-        }
-
-        let latestItem = historyList[0];
-        let latestApiPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
-        let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
-        let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
-
-        // Check Previous Win/Loss
-        if (pendingPrediction && pendingPrediction.period === latestApiPeriod) {
-            let isSizeHit = (pendingPrediction.size === actualSize);
-            let currentBet = getBetVal(maintenanceLevel);
-
-            if (isSizeHit) {
-                totalWins++;
-                totalProfitLoss += (currentBet * 0.98);
-                maintenanceLevel = 1;
-            } else {
-                totalLosses++;
-                totalProfitLoss -= currentBet;
-                maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
+        if (secondInCycle <= 3 || !cachedHistory) {
+            for (let url of API_ENDPOINTS) {
+                try {
+                    const res = await axios.get(url, { timeout: 2000 });
+                    let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
+                    if (Array.isArray(extracted) && extracted.length > 0) {
+                        cachedHistory = extracted;
+                        break;
+                    }
+                } catch (err) {}
             }
-            pendingPrediction = null;
         }
 
-        let nextTargetPeriodFull = String(BigInt(latestApiPeriod) + 2n);
-        
-        // Shorten the period string to only last 2 digits
-        let shortTargetPeriod = nextTargetPeriodFull.slice(-2);
+        if (cachedHistory && cachedHistory.length > 0) {
+            let latestItem = cachedHistory[0];
+            let latestApiPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
+            let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
+            let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
 
-        if (nextTargetPeriodFull !== lastSentPeriod) {
-            let pred = calculatePattern(historyList);
+            if (pendingPrediction && pendingPrediction.period === latestApiPeriod) {
+                let isSizeHit = (pendingPrediction.size === actualSize);
+                let currentBet = getBetVal(maintenanceLevel);
 
-            let activeLevel = maintenanceLevel;
-            let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
-            let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+                if (isSizeHit) {
+                    totalWins++;
+                    totalProfitLoss += (currentBet * 0.98);
+                    maintenanceLevel = 1;
+                } else {
+                    totalLosses++;
+                    totalProfitLoss -= currentBet;
+                    maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
+                }
+                pendingPrediction = null;
+            }
 
-            let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "📌 **PERIOD:** `" + shortTargetPeriod + "`\n" +
-                      "📏 **PREDICTION:** `" + pred.size + "`\n" +
-                      "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
-                      "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "🔗 **Register Link:**\n" + REGISTER_LINK;
+            let nextTargetPeriodFull = String(BigInt(latestApiPeriod) + 1n);
 
-            await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+            if (secondInCycle >= 28 && nextTargetPeriodFull !== lastSentPeriod) {
+                let pred = calculatePattern(cachedHistory);
 
-            lastSentPeriod = nextTargetPeriodFull;
-            pendingPrediction = {
-                period: nextTargetPeriodFull,
-                size: pred.size
-            };
+                let activeLevel = maintenanceLevel;
+                let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
+                let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            console.log(`[2-DIGIT SENT] Target Period 2-digit: ${shortTargetPeriod}`);
+                let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "📌 **PERIOD:** `" + nextTargetPeriodFull + "`\n" +
+                          "📏 **PREDICTION:** `" + pred.size + "`\n" +
+                          "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                          "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                          "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "🔗 **Register Link:**\n" + REGISTER_LINK;
+
+                await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+
+                lastSentPeriod = nextTargetPeriodFull;
+                pendingPrediction = {
+                    period: nextTargetPeriodFull,
+                    size: pred.size
+                };
+
+                console.log(`[CLEAN SENT] Target Period: ${nextTargetPeriodFull}`);
+            }
         }
 
     } catch (err) {
