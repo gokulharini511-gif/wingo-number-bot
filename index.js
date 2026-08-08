@@ -9,6 +9,7 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const CHANNEL_ID = -1003310985903; 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
+// 30 Seconds WinGo API Endpoints
 const API_ENDPOINTS = [
     'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
     'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
@@ -17,7 +18,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo Ultra-Fast Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +30,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Engine Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Ultra Fast Engine Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -126,7 +127,7 @@ async function fetchWinGoData() {
     for (let url of API_ENDPOINTS) {
         try {
             const res = await axios.get(url, {
-                timeout: 2000, // API Timeout 2 Sec (Unchanged)
+                timeout: 2000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
@@ -293,5 +294,5 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// Changed to 5000ms (5 Seconds Interval Check)
-setInterval(fetchWinGoData, 5000);
+// Every 500ms (0.5 Sec) Ultra Fast Checking
+setInterval(fetchWinGoData, 500);
