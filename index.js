@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S API Period Engine Active'));
+app.get('/', (req, res) => res.send('WinGo 30S 2-Digit Trend Engine Active'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S API Period & Win/Loss Engine Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S 2-Digit Trend Engine Live...**", { parse_mode: 'Markdown' });
     setInterval(apiPeriodEngine, 500);
 });
 
@@ -56,6 +56,7 @@ function getBetVal(level) {
     return levelData[level]?.val || Math.pow(3, level - 1);
 }
 
+// 2-Digit Pattern & Trend Analysis
 function calculatePattern(history) {
     try {
         if (history && history.length >= 5) {
@@ -65,28 +66,29 @@ function calculatePattern(history) {
             let n1 = numbers[0];
             let isBig = n => n >= 5;
 
-            // Pattern Logic
+            // Trend Based Pattern Logic (Giving 2-digit combinations as requested)
             if (sizes[0] === sizes[1]) {
                 let chosenSize = sizes[0];
-                let numStr = chosenSize === "BIG" ? (n1 % 2 === 0 ? "6, 8" : "7, 9") : (n1 % 2 === 0 ? "0, 2" : "1, 3");
+                let numStr = chosenSize === "BIG" ? (n1 % 2 === 0 ? "6 8" : "7 9") : (n1 % 2 === 0 ? "0 2" : "1 3");
                 return { size: chosenSize, numbersStr: numStr };
             }
 
             if (sizes[0] !== sizes[1] && sizes[1] !== sizes[2]) {
                 let chosenSize = sizes[0] === "BIG" ? "SMALL" : "BIG";
-                let numStr = chosenSize === "BIG" ? "5, 7, 9" : "0, 2, 4";
+                let numStr = chosenSize === "BIG" ? "5 7" : "2 4";
                 return { size: chosenSize, numbersStr: numStr };
             }
 
             let bigCount = sizes.filter(s => s === "BIG").length;
             let chosenSize = bigCount >= 3 ? "SMALL" : "BIG";
-            let numStr = chosenSize === "BIG" ? "6, 7, 8, 9" : "0, 1, 2, 3, 4";
+            let numStr = chosenSize === "BIG" ? "8 9" : "0 4";
             return { size: chosenSize, numbersStr: numStr };
         }
     } catch (e) {}
 
     let randomSize = Math.random() >= 0.5 ? "BIG" : "SMALL";
-    return { size: randomSize, numbersStr: randomSize === "BIG" ? "7, 9" : "1, 3" };
+    let randomNumStr = randomSize === "BIG" ? "7 9" : "1 3";
+    return { size: randomSize, numbersStr: randomNumStr };
 }
 
 let isRunning = false;
@@ -119,7 +121,7 @@ async function apiPeriodEngine() {
         let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
         let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
 
-        // Check Previous Win/Loss when API updates new period
+        // Check Previous Win/Loss
         if (pendingPrediction && pendingPrediction.period === latestApiPeriod) {
             let isSizeHit = (pendingPrediction.size === actualSize);
             let currentBet = getBetVal(maintenanceLevel);
@@ -136,10 +138,12 @@ async function apiPeriodEngine() {
             pendingPrediction = null;
         }
 
-        // Target Period from API (+2 offset for exact sync)
-        let nextTargetPeriod = String(BigInt(latestApiPeriod) + 2n);
+        let nextTargetPeriodFull = String(BigInt(latestApiPeriod) + 2n);
+        
+        // Shorten the period string to only last 2 digits
+        let shortTargetPeriod = nextTargetPeriodFull.slice(-2);
 
-        if (nextTargetPeriod !== lastSentPeriod) {
+        if (nextTargetPeriodFull !== lastSentPeriod) {
             let pred = calculatePattern(historyList);
 
             let activeLevel = maintenanceLevel;
@@ -148,7 +152,7 @@ async function apiPeriodEngine() {
 
             let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "📌 **PERIOD:** `" + nextTargetPeriod + "`\n" +
+                      "📌 **PERIOD:** `" + shortTargetPeriod + "`\n" +
                       "📏 **PREDICTION:** `" + pred.size + "`\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                       "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
@@ -160,13 +164,13 @@ async function apiPeriodEngine() {
 
             await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
-            lastSentPeriod = nextTargetPeriod;
+            lastSentPeriod = nextTargetPeriodFull;
             pendingPrediction = {
-                period: nextTargetPeriod,
+                period: nextTargetPeriodFull,
                 size: pred.size
             };
 
-            console.log(`[API SYNC SENT] Target Period: ${nextTargetPeriod} | Latest API Period: ${latestApiPeriod}`);
+            console.log(`[2-DIGIT SENT] Target Period 2-digit: ${shortTargetPeriod}`);
         }
 
     } catch (err) {
