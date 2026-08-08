@@ -40,12 +40,12 @@ async function sendReportToAllChannels(message, options = {}) {
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo Master Ultimate Multi-Pattern Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo High-Accuracy Safe Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await sendPredictionToChannels("🚀 **WinGo Master Multi-Pattern Bot Live...**", { parse_mode: 'Markdown' });
+        await sendPredictionToChannels("🚀 **WinGo High-Accuracy Safe Bot Live...**", { parse_mode: 'Markdown' });
         await bot.sendMessage(REPORT_ONLY_CHANNEL, "🚀 **WinGo Report Bot Live...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Error:", e.message);
@@ -95,8 +95,8 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Master Pattern Matcher Engine (Dragon, Zig-Zag, Double, Triple, 1-2-1, 1-3-1, 1-4-1, 4-to-4, 6-Continuous 1-3, etc.)
-function masterMultiPatternEngine(history, currentConsecutiveLosses, lastActualResult) {
+// High-Accuracy Low-Loss Master Pattern Matcher Engine
+function highAccuracySafePatternEngine(history, currentConsecutiveLosses, lastActualResult) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
@@ -110,19 +110,19 @@ function masterMultiPatternEngine(history, currentConsecutiveLosses, lastActualR
 
         let predResult = "";
 
-        // 1. Loss Protection: If 3+ consecutive losses, lock onto the streak
-        if (currentConsecutiveLosses >= 3 && lastActualResult) {
+        // 1. Loss Control: If 2+ consecutive losses, secure with strict streak following
+        if (currentConsecutiveLosses >= 2 && lastActualResult) {
             predResult = lastActualResult;
         } else {
-            // 2. Dragon Pattern (4+ continuous same results)
+            // 2. Dragon Pattern (4+ continuous)
             if (r1 === r2 && r2 === r3 && r3 === r4) {
                 predResult = r1;
             } 
-            // 3. Zig-Zag (Alternating: B, S, B, S)
+            // 3. Zig-Zag Pattern (Alternating)
             else if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
                 predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             }
-            // 4. Double Pattern (BB, SS, BB)
+            // 4. Double Pattern (BB, SS)
             else if (r1 === r2 && r3 === r4 && r1 !== r3) {
                 predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             }
@@ -130,23 +130,23 @@ function masterMultiPatternEngine(history, currentConsecutiveLosses, lastActualR
             else if (r1 === r2 && r2 === r3) {
                 predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             }
-            // 6. 1-2-1 Pattern Check
+            // 6. 1-2-1 Pattern
             else if (r1 !== r2 && r2 === r3 && r3 !== r4) {
                 predResult = (r4 === "BIG") ? "SMALL" : "BIG";
             }
-            // 7. 1-3-1 Pattern Check
+            // 7. 1-3-1 Pattern
             else if (r1 !== r2 && r2 === r3 && r3 === r4 && r4 !== r5) {
                 predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             }
-            // 8. 1-4-1 Pattern Check
+            // 8. 1-4-1 Pattern
             else if (allResults.length >= 6 && r1 !== r2 && r2 === r3 && r3 === r4 && r4 === r5 && r5 !== r6) {
                 predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             }
-            // 9. 4-to-4 Block Pattern Check
+            // 9. 4-to-4 Block Pattern
             else if (allResults.length >= 8 && allResults.slice(0, 4).every(v => v === allResults[0]) && allResults.slice(4, 8).every(v => v !== allResults[0])) {
                 predResult = allResults[0];
             }
-            // 10. 6 Continuous 1-3 Block Pattern Check
+            // 10. 6 Continuous 1-3 Block Pattern / Safe Majority Check
             else {
                 let bigCount = allResults.slice(0, 6).filter(x => x === "BIG").length;
                 predResult = (bigCount >= 3) ? "BIG" : "SMALL";
@@ -255,7 +255,7 @@ async function fetchWinGoData() {
                 consecutiveLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **STREAK LOSS (" + consecutiveLosses + ") - SWITCHING MASTER PATTERN!**";
+                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **SAFE MODE ACTIVE - OPTIMIZING NEXT BET!**";
 
                 maintenanceLevel++; 
             }
@@ -298,14 +298,14 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = masterMultiPatternEngine(list, consecutiveLosses, actualResult);
+            let pred = highAccuracySafePatternEngine(list, consecutiveLosses, actualResult);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
 
             let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "🔥 **WINGO 30S MASTER PREDICTION** 🔥\n" +
+            let msg = "🔥 **WINGO 30S SAFE PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎲 **BET:** **" + pred.predResult + "**\n" +
