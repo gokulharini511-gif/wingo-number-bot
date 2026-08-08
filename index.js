@@ -41,7 +41,6 @@ let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalJKWins = 0;
 let totalLosses = 0;
-let totalKills = 0; // KILLS Counter Added
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
@@ -212,7 +211,6 @@ async function fetchWinGoData() {
                 prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 
                 if (maintenanceLevel >= 8) {
-                    totalKills++; // Max Level Loss = KILL
                     maintenanceLevel = 1; 
                 } else {
                     maintenanceLevel++; 
@@ -228,7 +226,6 @@ async function fetchWinGoData() {
                                  "🏆 **TOTAL WINS:** " + totalWins + "\n" +
                                  "👑 **JK WINS:** " + totalJKWins + "\n" +
                                  "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
-                                 "☠️ **TOTAL KILLS:** " + totalKills + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -248,7 +245,6 @@ async function fetchWinGoData() {
                 totalWins = 0;
                 totalJKWins = 0;
                 totalLosses = 0;
-                totalKills = 0;
                 totalProfitLoss = 0;
 
                 maxLevelReached = 1;
@@ -279,7 +275,7 @@ async function fetchWinGoData() {
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
                    "🏆 **WINS:** " + totalWins + " | 👑 **JK WINS:** " + totalJKWins + "\n" +
-                   "💔 **LOSSES:** " + totalLosses + " | ☠️ **KILLS:** " + totalKills + "\n" +
+                   "💔 **LOSSES:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
