@@ -7,8 +7,8 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 
-// பல சேனல்களின் ஐடிகள் (Channel 1, Channel 2 மற்றும் உங்கள் பழைய சேனல்)
-const CHANNEL_IDS = ['1003293600118', '-1003310985903', '-1002486828817'];
+// முதல் சேனல் நீக்கப்பட்டு, கடைசி 2 சேனல்கள் மட்டும் வைக்கப்பட்டுள்ளது (முன்னால் '-' கட்டாயம் இருக்க வேண்டும்)
+const CHANNEL_IDS = ['-1003310985903', '-1002486828817'];
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
@@ -19,7 +19,6 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-// அனைத்து சேனல்களுக்கும் ஒரே நேரத்தில் மெசேஜ் அனுப்பும் வசதி
 async function sendToAllChannels(message, options = {}) {
     for (const channelId of CHANNEL_IDS) {
         try {
@@ -223,25 +222,25 @@ async function fetchWinGoData() {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
                 let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
-                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🎯 **TOTAL PREDICTIONS:** 60\n" +
-                                 "🏆 **BIG / SMALL WINS:** " + totalWins + "\n" +
-                                 "💥 **JACKPOT WINS:** " + totalJackpots + "\n" +
-                                 "💔 **LOSSES:** " + totalLosses + "\n" +
-                                 "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
-                                 "💰 **TOTAL PROFIT:** **" + profitSign + "**\n" +
-                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🎯 **LEVEL-WISE WINS BREAKDOWN:**\n" +
-                                 "🔹 LEVEL 1: " + levelWins[1] + " WINS\n" +
-                                 "🔹 LEVEL 2: " + levelWins[2] + " WINS\n" +
-                                 "🔹 LEVEL 3: " + levelWins[3] + " WINS\n" +
-                                 "🔹 LEVEL 4: " + levelWins[4] + " WINS\n" +
-                                 "🔹 LEVEL 5: " + levelWins[5] + " WINS\n" +
-                                 "🔹 LEVEL 6: " + levelWins[6] + " WINS\n" +
-                                 "🔹 LEVEL 7: " + levelWins[7] + " WINS\n" +
-                                 "🔹 LEVEL 8: " + levelWins[8] + " WINS\n" +
-                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
+                               "━━━━━━━━━━━━━━━━━━━━━\n" +
+                               "🎯 **TOTAL PREDICTIONS:** 60\n" +
+                               "🏆 **BIG / SMALL WINS:** " + totalWins + "\n" +
+                               "💥 **JACKPOT WINS:** " + totalJackpots + "\n" +
+                               "💔 **LOSSES:** " + totalLosses + "\n" +
+                               "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
+                               "💰 **TOTAL PROFIT:** **" + profitSign + "**\n" +
+                               "━━━━━━━━━━━━━━━━━━━━━\n" +
+                               "🎯 **LEVEL-WISE WINS BREAKDOWN:**\n" +
+                               "🔹 LEVEL 1: " + levelWins[1] + " WINS\n" +
+                               "🔹 LEVEL 2: " + levelWins[2] + " WINS\n" +
+                               "🔹 LEVEL 3: " + levelWins[3] + " WINS\n" +
+                               "🔹 LEVEL 4: " + levelWins[4] + " WINS\n" +
+                               "🔹 LEVEL 5: " + levelWins[5] + " WINS\n" +
+                               "🔹 LEVEL 6: " + levelWins[6] + " WINS\n" +
+                               "🔹 LEVEL 7: " + levelWins[7] + " WINS\n" +
+                               "🔹 LEVEL 8: " + levelWins[8] + " WINS\n" +
+                               "━━━━━━━━━━━━━━━━━━━━━\n" +
+                               "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await sendToAllChannels(summaryMsg, { parse_mode: 'Markdown' });
 
@@ -299,7 +298,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " to all channels (" + predictionCount + "/60)");
+            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " to active channels (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[API FETCH ERROR]:', error.message);
