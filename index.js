@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo High Frequency 2-Number Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo High Frequency Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo High-Frequency 2-Number Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + JK Number Bot Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -39,7 +39,9 @@ let lastPredictedSize = "";
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
+let totalJKWins = 0;
 let totalLosses = 0;
+let totalKills = 0; // KILLS Counter Added
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
@@ -93,7 +95,7 @@ function frequencyBasedEngine(history) {
             if (freqMap[n] !== undefined) {
                 freqMap[n].count += 1;
                 if (freqMap[n].lastSeenIndex === 999) {
-                    freqMap[n].lastSeenIndex = idx; // Recency Index
+                    freqMap[n].lastSeenIndex = idx;
                 }
             }
         });
@@ -180,6 +182,7 @@ async function fetchWinGoData() {
 
             if (isNumberHit) {
                 totalWins++;
+                totalJKWins++;
                 let singleBet = currentBetVal / 2;
                 let winProfit = (singleBet * 9) - currentBetVal; 
                 totalProfitLoss += winProfit;
@@ -209,6 +212,7 @@ async function fetchWinGoData() {
                 prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 
                 if (maintenanceLevel >= 8) {
+                    totalKills++; // Max Level Loss = KILL
                     maintenanceLevel = 1; 
                 } else {
                     maintenanceLevel++; 
@@ -222,7 +226,9 @@ async function fetchWinGoData() {
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                                 "👑 **JK WINS:** " + totalJKWins + "\n" +
                                  "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
+                                 "☠️ **TOTAL KILLS:** " + totalKills + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -240,8 +246,11 @@ async function fetchWinGoData() {
 
                 predictionCount = 0;
                 totalWins = 0;
+                totalJKWins = 0;
                 totalLosses = 0;
+                totalKills = 0;
                 totalProfitLoss = 0;
+
                 maxLevelReached = 1;
                 prediction60History = [];
             }
@@ -269,7 +278,8 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **TOTAL WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                   "🏆 **WINS:** " + totalWins + " | 👑 **JK WINS:** " + totalJKWins + "\n" +
+                   "💔 **LOSSES:** " + totalLosses + " | ☠️ **KILLS:** " + totalKills + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
