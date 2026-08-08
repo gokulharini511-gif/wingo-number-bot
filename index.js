@@ -5,10 +5,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// நீங்கள் கேட்ட புதிய டெலிகிராம் டோக்கன்
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
-
-// நீங்கள் கேட்ட இரண்டு சேனல்களின் ஐடிகள்
 const CHANNEL_IDS = ['-1003293600118', '-1003310985903'];
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -315,4 +312,3 @@ async function startContinuousLoop() {
 
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
-```[cite: 1]
