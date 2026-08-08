@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Big/Small + JK Number Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Bot Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -48,6 +48,10 @@ let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
 let prediction60History = [];
+
+let levelWinsCount = {
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0
+};
 
 const levelData = {
     1: { name: "₹1", val: 1 },
@@ -68,7 +72,7 @@ function getBetVal(level) {
 function pureBigAndJKEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (numbers.length < 10) return { size: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9" };
+        if (numbers.length < 10) return { size: "BIG", color: "GREEN", targetNumbers: [7, 9], numbersStr: "7, 9", colorStr: "🟢 GREEN" };
 
         let isGreenNum = n => [1, 3, 7, 9].includes(n);
         let isRedNum = n => [2, 4, 6, 8].includes(n);
@@ -116,15 +120,18 @@ function pureBigAndJKEngine(history) {
             matchedNumbers = candidates;
         }
 
+        let colorDisplay = (predictedColor === "GREEN") ? "🟢 GREEN" : "🔴 RED / 🟣 VIOLET";
+
         return { 
             size: predictedSize,
             color: predictedColor,
             targetNumbers: matchedNumbers, 
-            numbersStr: matchedNumbers.join(", ") 
+            numbersStr: matchedNumbers.join(", "),
+            colorStr: colorDisplay
         };
 
     } catch (e) {
-        return { size: "BIG", color: "GREEN", targetNumbers: [7, 9], numbersStr: "7, 9" };
+        return { size: "BIG", color: "GREEN", targetNumbers: [7, 9], numbersStr: "7, 9", colorStr: "🟢 GREEN" };
     }
 }
 
@@ -170,6 +177,8 @@ async function fetchWinGoData() {
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
         let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
         let actualSize = (actualNum >= 5) ? "BIG" : "SMALL";
+        let isGreenNum = n => [1, 3, 7, 9].includes(n);
+        let actualColorName = isGreenNum(actualNum) ? "GREEN" : (actualNum === 0 || actualNum === 5 ? "RED/VIOLET" : "RED");
 
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
         let dynamicStatusMsg = "";
@@ -190,22 +199,27 @@ async function fetchWinGoData() {
             if (isNumberHit) {
                 totalWins++;
                 totalJkWins++;
+                if (levelWinsCount[currentLevelExecuted] !== undefined) {
+                    levelWinsCount[currentLevelExecuted]++;
+                }
                 let singleBet = currentBetVal / 2;
                 let winProfit = (singleBet * 9) - currentBetVal; 
                 totalProfitLoss += winProfit;
 
-                dynamicStatusMsg = "🏆 **JK WINNER (" + actualNum + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")** 🏆";
+                dynamicStatusMsg = "🔥 **JK WIN: " + actualSize + " (" + actualNum + " - " + actualColorName + ")**";
 
-                prediction60History.unshift({ period: actualPeriod, status: "JK WINNER", level: currentLevelExecuted });
+                prediction60History.unshift({ period: actualPeriod, status: "JK WIN", level: currentLevelExecuted });
                 maintenanceLevel = 1; 
 
             } else if (isSizeHit) {
                 totalWins++;
+                if (levelWinsCount[currentLevelExecuted] !== undefined) {
+                    levelWinsCount[currentLevelExecuted]++;
+                }
                 let winProfit = currentBetVal * 0.98;
                 totalProfitLoss += winProfit;
 
-                let winLabel = (actualSize === "BIG") ? "✨ BIG WINNER" : "✨ SMALL WINNER";
-                dynamicStatusMsg = winLabel + " (" + actualSize + ") LEVEL " + currentLevelExecuted + " (+₹" + winProfit.toFixed(1) + ")";
+                dynamicStatusMsg = "✨ **" + actualSize + " WIN: " + actualSize + " (" + actualNum + " - " + actualColorName + ")**";
 
                 prediction60History.unshift({ period: actualPeriod, status: actualSize + " WIN", level: currentLevelExecuted });
                 maintenanceLevel = 1;
@@ -214,7 +228,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (" + actualNum + " - " + actualSize + ") LEVEL " + currentLevelExecuted + "**";
+                dynamicStatusMsg = "💔 **LOSS: " + lastPredictedSize + " (" + actualNum + " - " + actualColorName + ")**";
 
                 prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 
@@ -231,21 +245,12 @@ async function fetchWinGoData() {
                 let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
-                                 "🏆 **TOTAL WINS:** " + totalWins + "\n" +
-                                 "🎯 **JK WINS:** " + totalJkWins + "\n" +
-                                 "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
-                                 "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
-                                 "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
+                                 "🏆 **B/S WINS:** " + totalWins + "\n" +
+                                 "💥 **JK WINS:** " + totalJkWins + "\n" +
+                                 "💔 **LOSS:** " + totalLosses + "\n" +
+                                 "💰 **TOTAL PROFIT:** " + profitSign + "\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
-
-                let recent10 = prediction60History.slice(0, 10);
-                recent10.forEach(item => {
-                    let icon = item.status.includes("WIN") ? "✅" : "❌";
-                    summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
-                });
-
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for next 60 rounds!**";
+                                 "🔄 **Batch completed! Resetting stats for next 60 rounds!**";
 
                 await safeSendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
@@ -255,6 +260,7 @@ async function fetchWinGoData() {
                 totalJkWins = 0;
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
+                levelWinsCount = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
                 prediction60History = [];
             }
         }
@@ -267,13 +273,13 @@ async function fetchWinGoData() {
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Big/Small + 2-Number Filtered)** ⚡\n" +
+            let msg = "🔥 **WINGO 30S PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                      "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
-                      "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                      "🎲 **BET:** " + pred.size + "\n" +
+                      "🔢 **PRED NO:** " + pred.numbersStr + "\n" +
+                      "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                      "💰 **BET LEVEL AMT:** LEVEL " + activeLevel + " (" + currentBetName + ")\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
@@ -281,11 +287,16 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **TOTAL WINS:** " + totalWins + "\n" +
-                   "🎯 **JK WINS:** " + totalJkWins + "\n" +
-                   "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
-                   "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
-                   "━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   "🏆 **B/S WINS:** " + totalWins + " | 💥 **JK:** " + totalJkWins + " | 💔 **LOSS:** " + totalLosses + "\n" +
+                   "📊 **TOTAL PROFIT:** " + profitSign + "\n" +
+                   "━━━━━━━━━━━━━━━━━━━━━\n" +
+                   "🎯 **LIVE LEVEL WINS:**\n";
+
+            for (let lvl = 1; lvl <= 8; lvl++) {
+                msg += "🔹 **LEVEL " + lvl + ":** " + levelWinsCount[lvl] + " WINS\n";
+            }
+
+            msg += "━━━━━━━━━━━━━━━━━━━━━\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
             await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
@@ -308,3 +319,4 @@ process.on('uncaughtException', (err) => console.error('Uncaught Exception:', er
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
 setInterval(fetchWinGoData, 3000);
+```[cite: 1]
