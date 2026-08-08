@@ -10,14 +10,14 @@ const CHANNEL_ID = -1003310985903;
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const API_ENDPOINTS = [
-    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=10&pageNo=1',
-    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=10&pageNo=1',
+    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=15&pageNo=1',
+    'https://draw.ar-lottery02.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=15&pageNo=1',
     'https://api.rajastake7.com/api/web/game/winGo/getHistoryList?type=30'
 ];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S High-Speed Direct Period Engine Active'));
+app.get('/', (req, res) => res.send('Clean WinGo Engine Active'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,32 +29,11 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Direct Period Sync Engine Live...**", { parse_mode: 'Markdown' });
-    setInterval(directPeriodSyncEngine, 100);
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Prediction Engine Started...**", { parse_mode: 'Markdown' });
+    setInterval(cleanEngine, 100);
 });
 
 let lastSentPeriod = "";
-let pendingPrediction = null;
-
-let totalWins = 0;
-let totalLosses = 0;
-let maintenanceLevel = 1;
-let totalProfitLoss = 0;
-
-const levelData = {
-    1: { name: "₹1", val: 1 },
-    2: { name: "₹3", val: 3 },
-    3: { name: "₹7", val: 7 },
-    4: { name: "₹20", val: 20 },
-    5: { name: "₹50", val: 50 },
-    6: { name: "₹150", val: 150 },
-    7: { name: "₹450", val: 450 },
-    8: { name: "₹1350", val: 1350 }
-};
-
-function getBetVal(level) {
-    return levelData[level]?.val || Math.pow(3, level - 1);
-}
 
 function calculatePattern(history) {
     try {
@@ -79,7 +58,7 @@ function calculatePattern(history) {
 
 let isRunning = false;
 
-async function directPeriodSyncEngine() {
+async function cleanEngine() {
     if (isRunning) return;
     isRunning = true;
 
@@ -107,59 +86,25 @@ async function directPeriodSyncEngine() {
 
         let latestItem = historyList[0];
         let latestApiPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
-        let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
-        let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
 
-        // 1. Check Previous Prediction Result Immediately On API Arrival
-        if (pendingPrediction && pendingPrediction.period === latestApiPeriod) {
-            let isSizeHit = (pendingPrediction.size === actualSize);
-            let currentBet = getBetVal(maintenanceLevel);
-
-            if (isSizeHit) {
-                totalWins++;
-                totalProfitLoss += (currentBet * 0.98);
-                console.log(`[WIN] Period: ${latestApiPeriod} | Result: ${actualSize}`);
-                maintenanceLevel = 1;
-            } else {
-                totalLosses++;
-                totalProfitLoss -= currentBet;
-                console.log(`[LOSS] Period: ${latestApiPeriod} | Result: ${actualSize}`);
-                maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
-            }
-            pendingPrediction = null;
-        }
-
-        // 2. Next Period Calculation (+2 offset fixes late delivery & matches live timer)
+        // Next Period (+2 Offset to sync with live timer)
         let nextTargetPeriod = String(BigInt(latestApiPeriod) + 2n);
 
         if (nextTargetPeriod !== lastSentPeriod) {
             let pred = calculatePattern(historyList);
 
-            let activeLevel = maintenanceLevel;
-            let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
-            let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-
-            let msg = "⚡ **WIN GO 30S EXACT PREDICTION** ⚡\n" +
+            let msg = "⚡ **WIN GO 30S PREDICTION** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextTargetPeriod + "`\n" +
                       "📏 **PREDICTION:** `" + pred.size + "`\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
-                      "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "🔗 **Register Link:**\n" + REGISTER_LINK;
 
             await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
             lastSentPeriod = nextTargetPeriod;
-            pendingPrediction = {
-                period: nextTargetPeriod,
-                size: pred.size
-            };
-
-            console.log(`[SENT INSTANT] Target Period: ${nextTargetPeriod} | Latest API Period: ${latestApiPeriod}`);
+            console.log(`[PREDICTION SENT] Target Period: ${nextTargetPeriod}`);
         }
 
     } catch (err) {
