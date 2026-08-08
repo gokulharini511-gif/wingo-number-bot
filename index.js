@@ -9,15 +9,16 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const CHANNEL_ID = -1003310985903; 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-// 1-Min / 30S API Endpoint
+// Multi-Domain Failover API Endpoints (1-Min Game)
 const API_ENDPOINTS = [
     'https://draw.ar-lottery01.com/WinGo/WinGo_60S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
-    'https://draw.ar-lottery02.com/WinGo/WinGo_60S/GetHistoryIssuePage.json?pageSize=50&pageNo=1'
+    'https://draw.ar-lottery02.com/WinGo/WinGo_60S/GetHistoryIssuePage.json?pageSize=50&pageNo=1',
+    'https://draw.ar-lottery03.com/WinGo/WinGo_60S/GetHistoryIssuePage.json?pageSize=50&pageNo=1'
 ];
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('10-Sec Early Prediction Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Early Prediction Engine Running!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -28,13 +29,13 @@ async function safeSendMessage(chatId, text, options) {
 }
 
 app.listen(PORT, '0.0.0.0', async () => {
-    console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 10-Sec Early Prediction Bot Live...**", { parse_mode: 'Markdown' });
+    console.log("Server started on port " + PORT);
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 10-Sec Early Prediction Live...**", { parse_mode: 'Markdown' });
     monitorAndPredict();
 });
 
 let lastPredictedPeriod = "";
-let pendingPrediction = null; // { period, size, numbers }
+let pendingPrediction = null;
 
 let totalWins = 0;
 let totalLosses = 0;
@@ -56,7 +57,6 @@ function getBetVal(level) {
     return levelData[level]?.val || Math.pow(3, level - 1);
 }
 
-// History Pattern Predictor Algorithm
 function generateEarlyPrediction(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -66,7 +66,6 @@ function generateEarlyPrediction(history) {
         let last1 = numbers[0];
         let last2 = numbers[1];
 
-        // Simple Trend Check
         let predictedSize = (isBigNum(last1) === isBigNum(last2)) 
             ? (isBigNum(last1) ? "BIG" : "SMALL") 
             : (isBigNum(last1) ? "SMALL" : "BIG");
@@ -95,26 +94,39 @@ async function monitorAndPredict() {
 
         for (let url of API_ENDPOINTS) {
             try {
-                const res = await axios.get(url, { timeout: 2000 });
-                let data = res.data?.data?.list || res.data?.list;
-                if (Array.isArray(data) && data.length > 0) {
-                    historyList = data;
+                const res = await axios.get(url, { 
+                    timeout: 3000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+                        'Accept': 'application/json, text/plain, */*'
+                    }
+                });
+
+                let data = res.data;
+                if (typeof data === 'string') {
+                    try { data = JSON.parse(data); } catch (e) {}
+                }
+
+                let extracted = data?.data?.list || data?.list || data?.data;
+                if (Array.isArray(extracted) && extracted.length > 0) {
+                    historyList = extracted;
                     break;
                 }
             } catch (err) {}
         }
 
         if (!historyList) {
+            console.log("Waiting for API Data...");
             isChecking = false;
             return;
         }
 
         let latestItem = historyList[0];
-        let actualPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period);
+        let actualPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
         let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
         let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
 
-        // 1. Check Previous Pending Prediction (Result Processing)
+        // 1. Result Check for Pending Round
         if (pendingPrediction && pendingPrediction.period === actualPeriod) {
             let isSizeHit = (pendingPrediction.size === actualSize);
             let currentBet = getBetVal(maintenanceLevel);
@@ -122,22 +134,22 @@ async function monitorAndPredict() {
             if (isSizeHit) {
                 totalWins++;
                 totalProfitLoss += (currentBet * 0.98);
-                console.log(`[RESULT] Period ${actualPeriod} WIN! (${actualSize})`);
+                console.log(`[RESULT] Period ${actualPeriod} -> WIN (${actualSize})`);
                 maintenanceLevel = 1;
             } else {
                 totalLosses++;
                 totalProfitLoss -= currentBet;
-                console.log(`[RESULT] Period ${actualPeriod} LOSS! Got: ${actualSize}`);
+                console.log(`[RESULT] Period ${actualPeriod} -> LOSS (Got ${actualSize})`);
                 maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
             }
 
-            pendingPrediction = null; // Reset Pending
+            pendingPrediction = null;
         }
 
-        // 2. Compute Next Period ID for Early Prediction
+        // 2. Next Period Calculation
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
 
-        // 3. Send 10-Sec Early Prediction (If not sent already)
+        // 3. Send 10-Sec Early Message
         if (nextPeriod !== lastPredictedPeriod) {
             let pred = generateEarlyPrediction(historyList);
 
@@ -159,7 +171,6 @@ async function monitorAndPredict() {
 
             await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
-            // Save details for next round validation
             lastPredictedPeriod = nextPeriod;
             pendingPrediction = {
                 period: nextPeriod,
@@ -167,15 +178,15 @@ async function monitorAndPredict() {
                 numbers: pred.targetNumbers
             };
 
-            console.log("[SUCCESS] 10-Sec Early Message Sent for Period: " + nextPeriod);
+            console.log("➡️ Sent 10s Advance Message for Period: " + nextPeriod);
         }
 
     } catch (err) {
-        console.error("Monitor Error:", err.message);
+        console.error("Execution Error:", err.message);
     } finally {
         isChecking = false;
     }
 }
 
-// Run engine every 1 Second
+// Check Server Every 1 Second
 setInterval(monitorAndPredict, 1000);
