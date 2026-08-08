@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S 10s Timer Engine Active'));
+app.get('/', (req, res) => res.send('WinGo 30S 5-Second Advance Engine Active'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,12 +29,13 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Engine Running...**", { parse_mode: 'Markdown' });
-    setInterval(exactTimerEngine, 250);
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S - 5 Sec Advance Engine Live...**", { parse_mode: 'Markdown' });
+    setInterval(exact5sEngine, 200);
 });
 
 let lastSentPeriod = "";
 let pendingPrediction = null;
+let lastFetchedHistory = null;
 
 let totalWins = 0;
 let totalLosses = 0;
@@ -69,7 +70,7 @@ function getCurrent30SPeriod(offsetSeconds = 0) {
     return `${year}${month}${day}3000${10000 + (periodIndex % 2880)}`;
 }
 
-function calculateEarlyPattern(history) {
+function calculatePattern(history) {
     try {
         if (history && history.length > 0) {
             let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -92,7 +93,7 @@ function calculateEarlyPattern(history) {
 
 let isRunning = false;
 
-async function exactTimerEngine() {
+async function exact5sEngine() {
     if (isRunning) return;
     isRunning = true;
 
@@ -100,23 +101,21 @@ async function exactTimerEngine() {
         let now = new Date();
         let secondInCycle = now.getUTCSeconds() % 30; // 0 to 29 seconds loop
 
-        // 1. Check Previous Result from API (Between 0s and 4s)
-        if (secondInCycle <= 4 && pendingPrediction) {
-            let historyList = null;
-
+        // 1. Fetch live result between 0s and 4s to verify previous round
+        if (secondInCycle <= 4) {
             for (let url of API_ENDPOINTS) {
                 try {
                     const res = await axios.get(url, { timeout: 1000 });
                     let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
                     if (Array.isArray(extracted) && extracted.length > 0) {
-                        historyList = extracted;
+                        lastFetchedHistory = extracted;
                         break;
                     }
                 } catch (err) {}
             }
 
-            if (historyList) {
-                let latestItem = historyList[0];
+            if (pendingPrediction && lastFetchedHistory) {
+                let latestItem = lastFetchedHistory[0];
                 let actualPeriod = String(latestItem.issueName || latestItem.issueNumber || latestItem.period || latestItem.issue);
                 let actualNum = parseInt(latestItem.number !== undefined ? latestItem.number : latestItem.result);
                 let actualSize = actualNum >= 5 ? "BIG" : "SMALL";
@@ -128,7 +127,7 @@ async function exactTimerEngine() {
                     if (isSizeHit) {
                         totalWins++;
                         totalProfitLoss += (currentBet * 0.98);
-                        console.log(`[WIN HIT] Period: ${actualPeriod} | Result: ${actualSize}`);
+                        console.log(`[WIN] Period: ${actualPeriod} | Result: ${actualSize}`);
                         maintenanceLevel = 1;
                     } else {
                         totalLosses++;
@@ -141,18 +140,18 @@ async function exactTimerEngine() {
             }
         }
 
-        // 2. Trigger Prediction Exactly at 20th Second (10 Seconds Before 30s Ends)
-        if (secondInCycle >= 20) {
+        // 2. Trigger Prediction at 25th Second (Exactly 5 Seconds Before Round Closes)
+        if (secondInCycle >= 25) {
             let currentActivePeriod = getCurrent30SPeriod(0);
 
             if (currentActivePeriod !== lastSentPeriod) {
-                let pred = calculateEarlyPattern(null);
+                let pred = calculatePattern(lastFetchedHistory);
 
                 let activeLevel = maintenanceLevel;
                 let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-                let msg = "⚡ **WIN GO 30S (10S ADVANCE PREDICTION)** ⚡\n" +
+                let msg = "⚡ **WIN GO 30S (5S ADVANCE PREDICTION)** ⚡\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n" +
                           "📌 **PERIOD:** `" + currentActivePeriod + "`\n" +
                           "📏 **PREDICTION:** `" + pred.size + "`\n" +
@@ -172,7 +171,7 @@ async function exactTimerEngine() {
                     size: pred.size
                 };
 
-                console.log(`[SENT 10S ADVANCE] Period: ${currentActivePeriod} at Second: ${secondInCycle}`);
+                console.log(`[SENT 5S ADVANCE] Period: ${currentActivePeriod} at Second: ${secondInCycle}`);
             }
         }
 
