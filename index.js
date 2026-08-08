@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo High Speed Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 10-Sec Delay Engine Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Maximum Speed Engine Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 10-Sec Delay Engine Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -126,7 +126,8 @@ async function fetchWinGoData() {
     for (let url of API_ENDPOINTS) {
         try {
             const res = await axios.get(url, {
-                timeout: 1000, 
+                // API Request Timeout set to 10 Seconds (10000ms)
+                timeout: 10000, 
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
@@ -248,6 +249,8 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
+            lastSentPeriod = nextPeriod; // Double trigger தடுக்க உடனே assign செய்யப்படுகிறது
+            
             let pred = frequencyBasedEngine(list);
             
             let activeLevel = maintenanceLevel;
@@ -255,8 +258,8 @@ async function fetchWinGoData() {
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION (ULTRA SPEED)**\n" +
-                      "⚡ **WinGo 30S Max Speed Engine** ⚡\n" +
+            let msg = "👑 **KING PREDICTION (10 SEC DELAYED)**\n" +
+                      "⚡ **WinGo 30S Custom Speed Engine** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
@@ -275,13 +278,15 @@ async function fetchWinGoData() {
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-            await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+            // 10 விநாடி தாமதத்திற்குப் பின் Telegram-க்கு செய்தி அனுப்பும் Timeout Logic
+            setTimeout(async () => {
+                await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+                console.log("[SENT 10s DELAYED] Period: " + nextPeriod);
+            }, 10000);
 
-            lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedSize = pred.size;
-            console.log("[SUCCESS] Max Speed Processed Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
@@ -293,5 +298,5 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// High-speed 500ms loop
+// 500ms High-Speed checking loop
 setInterval(fetchWinGoData, 500);
