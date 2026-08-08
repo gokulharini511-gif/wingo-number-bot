@@ -179,6 +179,7 @@ async function fetchWinGoData() {
 
             let currentLevelExecuted = maintenanceLevel;
             let currentBetVal = getBetVal(currentLevelExecuted);
+            let currentBetName = levelData[currentLevelExecuted]?.name || ("₹" + currentBetVal);
 
             if (currentLevelExecuted > maxLevelReached) {
                 maxLevelReached = currentLevelExecuted;
@@ -200,9 +201,9 @@ async function fetchWinGoData() {
 
                 if (isNumberHit) {
                     totalJackpots++;
-                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
+                    dynamicStatusMsg = "🎉 **CONGRATULATIONS (LEVEL " + currentLevelExecuted + " - " + currentBetName + " WIN & JACKPOT!)** 🎉\n🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
                 } else {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
+                    dynamicStatusMsg = "🎉 **CONGRATULATIONS (LEVEL " + currentLevelExecuted + " - " + currentBetName + " WIN!)** 🎉\n🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
                 }
 
                 maintenanceLevel = 1; 
@@ -211,7 +212,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
+                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **NEXT LEVEL PARTHU KURU (MOVING TO LEVEL " + (maintenanceLevel + 1) + ")**";
 
                 maintenanceLevel++; 
             }
@@ -312,3 +313,4 @@ async function startContinuousLoop() {
 
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
+```[cite: 1]
