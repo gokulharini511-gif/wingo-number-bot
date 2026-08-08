@@ -41,12 +41,12 @@ async function sendReportToAllChannels(message, options = {}) {
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo Breakout-Smart Pattern Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo Smart Last-Number Dynamic Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await sendPredictionToChannels("🚀 **WinGo Breakout-Smart Pattern Bot Live...**", { parse_mode: 'Markdown' });
+        await sendPredictionToChannels("🚀 **WinGo Smart Last-Number Dynamic Bot Live...**", { parse_mode: 'Markdown' });
         await bot.sendMessage(REPORT_ONLY_CHANNEL, "🚀 **WinGo Report Bot Live...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Error:", e.message);
@@ -95,8 +95,8 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// 2000-History Breakout & Pattern Matching Engine
-function smartBreakoutPatternEngine(history) {
+// Last-Number Dynamic Engine + Direct Big/Small Mirroring
+function smartLastNumberPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
@@ -109,37 +109,47 @@ function smartBreakoutPatternEngine(history) {
 
         let predResult = "";
 
-        // Breakout detection: Check if a strict pattern (Dragon / Double / Zig-Zag) is breaking
+        // Direct Pattern Mirroring (Big -> Big, Small -> Small, with Breakout Handling)
         let isDragonBreaking = (r1 !== r2 && r2 === r3 && r3 === r4 && r4 === r5);
         let isZigZagActive = (r1 !== r2 && r2 !== r3 && r3 !== r4);
         let isDoubleActive = (r1 === r2 && r3 === r4 && r1 !== r3);
 
         if (isDragonBreaking) {
-            // If dragon breaks, anticipate immediate reversal
             predResult = r1;
         } else if (r1 === r2 && r2 === r3) {
-            // Dragon / Triple continuation
             predResult = r1;
         } else if (isZigZagActive) {
-            // Zig-Zag strict alternating follow
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
         } else if (isDoubleActive) {
-            // Double pattern follow (e.g., SS BB -> continue block or alternate)
             predResult = r1;
         } else {
-            // Default direct tracking of immediate result (Big -> Big, Small -> Small)
-            predResult = r1;
+            predResult = r1; // Direct follow
         }
 
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let bestTwoNumbers = [];
 
+        // Dynamic Number selection based on Last Actual Number type & predicted result
         if (predResult === "BIG") {
-            if (lastNum % 2 === 0) bestTwoNumbers = [6, 8];
-            else bestTwoNumbers = [7, 9];
+            if (lastNum === 6 || lastNum === 8) {
+                bestTwoNumbers = [6, 8];
+            } else if (lastNum === 7 || lastNum === 9) {
+                bestTwoNumbers = [7, 9];
+            } else if (lastNum % 2 === 0) {
+                bestTwoNumbers = [6, 8];
+            } else {
+                bestTwoNumbers = [7, 9];
+            }
         } else {
-            if (lastNum % 2 === 0) bestTwoNumbers = [0, 2];
-            else bestTwoNumbers = [1, 3];
+            if (lastNum === 0 || lastNum === 2) {
+                bestTwoNumbers = [0, 2];
+            } else if (lastNum === 1 || lastNum === 3) {
+                bestTwoNumbers = [1, 3];
+            } else if (lastNum % 2 === 0) {
+                bestTwoNumbers = [0, 2];
+            } else {
+                bestTwoNumbers = [1, 3];
+            }
         }
 
         let numbersStr = bestTwoNumbers.join(", ");
@@ -231,7 +241,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **BREAKOUT DETECTED - SHIFTING TO LEVEL " + (maintenanceLevel + 1) + "**";
+                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **SHIFTING TO LEVEL " + (maintenanceLevel + 1) + "**";
 
                 maintenanceLevel++; 
             }
@@ -273,14 +283,14 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = smartBreakoutPatternEngine(list);
+            let pred = smartLastNumberPatternEngine(list);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
 
             let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "🔥 **WINGO 30S SMART-BREAKOUT PREDICTION** 🔥\n" +
+            let msg = "🔥 **WINGO 30S LAST-NUMBER SMART PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎲 **BET:** **" + pred.predResult + "**\n" +
