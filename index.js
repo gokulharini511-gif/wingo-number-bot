@@ -10,7 +10,7 @@ const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 const PREDICTION_CHANNELS = ['-1003293600118', '-1003310985903'];
 const REPORT_ONLY_CHANNEL = '-1003345976502';
 
-// pageSize=2000 to analyze deep history
+// pageSize=2000 for deep historical pattern analysis
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=2000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 
@@ -41,12 +41,12 @@ async function sendReportToAllChannels(message, options = {}) {
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 2000-History Direct Pattern Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo Breakout-Smart Pattern Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await sendPredictionToChannels("🚀 **WinGo 2000-History Direct Pattern Bot Live...**", { parse_mode: 'Markdown' });
+        await sendPredictionToChannels("🚀 **WinGo Breakout-Smart Pattern Bot Live...**", { parse_mode: 'Markdown' });
         await bot.sendMessage(REPORT_ONLY_CHANNEL, "🚀 **WinGo Report Bot Live...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Error:", e.message);
@@ -95,8 +95,8 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// 2000 History Direct Pattern Matching Engine (Big comes -> Big, Small comes -> Small, Zig-Zag, Double, Triple tracking)
-function directPattern2000Engine(history) {
+// 2000-History Breakout & Pattern Matching Engine
+function smartBreakoutPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
@@ -105,21 +105,29 @@ function directPattern2000Engine(history) {
         let r2 = allResults[1];
         let r3 = allResults[2];
         let r4 = allResults[3];
+        let r5 = allResults[4];
 
         let predResult = "";
 
-        // Direct pattern mirroring based on recent active streak
-        if (r1 === r2 && r2 === r3) {
-            // Dragon or Triple: Continue the same pattern
+        // Breakout detection: Check if a strict pattern (Dragon / Double / Zig-Zag) is breaking
+        let isDragonBreaking = (r1 !== r2 && r2 === r3 && r3 === r4 && r4 === r5);
+        let isZigZagActive = (r1 !== r2 && r2 !== r3 && r3 !== r4);
+        let isDoubleActive = (r1 === r2 && r3 === r4 && r1 !== r3);
+
+        if (isDragonBreaking) {
+            // If dragon breaks, anticipate immediate reversal
             predResult = r1;
-        } else if (r1 !== r2 && r2 !== r3) {
-            // Zig-Zag / Alternating: Follow exact alternate rule
+        } else if (r1 === r2 && r2 === r3) {
+            // Dragon / Triple continuation
+            predResult = r1;
+        } else if (isZigZagActive) {
+            // Zig-Zag strict alternating follow
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-        } else if (r1 === r2 && r2 !== r3) {
-            // Double pattern tracking (e.g. SS B -> S or BB S -> B)
+        } else if (isDoubleActive) {
+            // Double pattern follow (e.g., SS BB -> continue block or alternate)
             predResult = r1;
         } else {
-            // Default direct follow of immediate last result
+            // Default direct tracking of immediate result (Big -> Big, Small -> Small)
             predResult = r1;
         }
 
@@ -223,7 +231,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **MOVING TO NEXT LEVEL (" + (maintenanceLevel + 1) + ")**";
+                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **BREAKOUT DETECTED - SHIFTING TO LEVEL " + (maintenanceLevel + 1) + "**";
 
                 maintenanceLevel++; 
             }
@@ -265,14 +273,14 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = directPattern2000Engine(list);
+            let pred = smartBreakoutPatternEngine(list);
             
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
 
             let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "🔥 **WINGO 30S DIRECT PATTERN PREDICTION** 🔥\n" +
+            let msg = "🔥 **WINGO 30S SMART-BREAKOUT PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎲 **BET:** **" + pred.predResult + "**\n" +
