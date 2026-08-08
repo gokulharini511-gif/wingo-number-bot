@@ -41,7 +41,7 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
-let totalJkWins = 0; // JK Wins கவுன்டர் சேர்க்கப்பட்டுள்ளது
+let totalJkWins = 0;
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
@@ -189,7 +189,7 @@ async function fetchWinGoData() {
 
             if (isNumberHit) {
                 totalWins++;
-                totalJkWins++; // JK Win எண்ணike அதிகரிக்கப்படும்
+                totalJkWins++;
                 let singleBet = currentBetVal / 2;
                 let winProfit = (singleBet * 9) - currentBetVal; 
                 totalProfitLoss += winProfit;
@@ -280,7 +280,6 @@ async function fetchWinGoData() {
                 msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
             }
 
-            // Wins, Losses களுக்குக் கீழே JK Wins சேர்க்கப்பட்டுள்ளது
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
                    "🏆 **TOTAL WINS:** " + totalWins + "\n" +
                    "🎯 **JK WINS:** " + totalJkWins + "\n" +
