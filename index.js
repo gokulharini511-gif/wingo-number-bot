@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Engine Running'));
+app.get('/', (req, res) => res.send('WinGo 30S Advance Result Engine Running'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,8 +29,8 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Engine Started...**", { parse_mode: 'Markdown' });
-    setInterval(executionEngine, 300);
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Advance Result Engine Live...**", { parse_mode: 'Markdown' });
+    setInterval(advanceResultEngine, 200);
 });
 
 let lastSentPeriod = "";
@@ -56,9 +56,9 @@ function getBetVal(level) {
     return levelData[level]?.val || Math.pow(3, level - 1);
 }
 
-function getExact30SPeriod(offset = 0) {
+function getExact30SPeriod(offsetSeconds = 0) {
     let now = new Date();
-    let totalSeconds = Math.floor(now.getTime() / 1000) + offset;
+    let totalSeconds = Math.floor(now.getTime() / 1000) + offsetSeconds;
     let periodIndex = Math.floor(totalSeconds / 30);
     
     let date = new Date(totalSeconds * 1000);
@@ -69,7 +69,7 @@ function getExact30SPeriod(offset = 0) {
     return `${year}${month}${day}3000${10000 + (periodIndex % 2880)}`;
 }
 
-function calculateEarlyPattern(history) {
+function generateAdvanceResult(history) {
     try {
         if (history && history.length > 0) {
             let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -92,7 +92,7 @@ function calculateEarlyPattern(history) {
 
 let isRunning = false;
 
-async function executionEngine() {
+async function advanceResultEngine() {
     if (isRunning) return;
     isRunning = true;
 
@@ -100,13 +100,13 @@ async function executionEngine() {
         let now = new Date();
         let secondInCycle = now.getUTCSeconds() % 30;
 
-        // 1. Fetch Result & Verify History (Seconds 0 - 5)
+        // Verify result from previous round (0 to 5 seconds)
         if (secondInCycle <= 5 && pendingPrediction) {
             let historyList = null;
 
             for (let url of API_ENDPOINTS) {
                 try {
-                    const res = await axios.get(url, { timeout: 1200 });
+                    const res = await axios.get(url, { timeout: 1000 });
                     let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
                     if (Array.isArray(extracted) && extracted.length > 0) {
                         historyList = extracted;
@@ -128,12 +128,12 @@ async function executionEngine() {
                     if (isSizeHit) {
                         totalWins++;
                         totalProfitLoss += (currentBet * 0.98);
-                        console.log(`[RESULT WIN] Period: ${actualPeriod} | Result: ${actualSize}`);
+                        console.log(`[WIN] Period: ${actualPeriod} | Result: ${actualSize}`);
                         maintenanceLevel = 1;
                     } else {
                         totalLosses++;
                         totalProfitLoss -= currentBet;
-                        console.log(`[RESULT LOSS] Period: ${actualPeriod} | Result: ${actualSize}`);
+                        console.log(`[LOSS] Period: ${actualPeriod} | Result: ${actualSize}`);
                         maintenanceLevel = (maintenanceLevel >= 8) ? 1 : maintenanceLevel + 1;
                     }
                     pendingPrediction = null;
@@ -141,22 +141,22 @@ async function executionEngine() {
             }
         }
 
-        // 2. Dispatch Prediction Exactly 10 Seconds Before Round Ends (At Second 20)
+        // Send Advance Result exactly at 20th Second (10 Seconds Before Game Timer Closes)
         if (secondInCycle >= 20) {
-            let targetPeriod = getExact30SPeriod(30);
+            let advanceTargetPeriod = getExact30SPeriod(30);
 
-            if (targetPeriod !== lastSentPeriod) {
-                let pred = calculateEarlyPattern(null);
+            if (advanceTargetPeriod !== lastSentPeriod) {
+                let resultData = generateAdvanceResult(null);
 
                 let activeLevel = maintenanceLevel;
                 let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-                let msg = "⚡ **WIN GO 30S (10S ADVANCE)** ⚡\n" +
+                let msg = "⚡ **WIN GO 30S ADVANCE RESULT** ⚡\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n" +
-                          "📌 **PERIOD:** `" + targetPeriod + "`\n" +
-                          "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
-                          "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                          "📌 **PERIOD:** `" + advanceTargetPeriod + "`\n" +
+                          "📏 **ADVANCE RESULT:** `" + resultData.size + "`\n" +
+                          "🔢 **NUMBERS:** `" + resultData.numbersStr + "`\n" +
                           "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n" +
                           "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
@@ -166,13 +166,13 @@ async function executionEngine() {
 
                 await safeSendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
-                lastSentPeriod = targetPeriod;
+                lastSentPeriod = advanceTargetPeriod;
                 pendingPrediction = {
-                    period: targetPeriod,
-                    size: pred.size
+                    period: advanceTargetPeriod,
+                    size: resultData.size
                 };
 
-                console.log(`[SENT 10S ADVANCE] Target Period: ${targetPeriod} at cycle second: ${secondInCycle}`);
+                console.log(`[SENT ADVANCE RESULT] Period: ${advanceTargetPeriod} at second: ${secondInCycle}`);
             }
         }
 
