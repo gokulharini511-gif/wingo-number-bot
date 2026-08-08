@@ -7,7 +7,6 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8834043338:AAH1uJ9sUVFAM8iHJ9Y348P7S1r4PXmU_Xk';
 
-// சேனல் ஐடிகள்: பிரடிக்ஷன் மற்றும் ரிப்போர்ட் செல்லும் சேனல் மற்றும் ரிப்போர்ட் மட்டும் செல்லும் சேனல்
 const PREDICTION_CHANNEL = '-1003310985903';
 const REPORT_ONLY_CHANNEL = '-1003345976502';
 
@@ -254,7 +253,6 @@ async function fetchWinGoData() {
                                "━━━━━━━━━━━━━━━━━━━━━\n" +
                                "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
-                // இந்த ரிப்பேர்ட் மட்டும் இரண்டு சேனல்களுக்கும் அனுப்பப்படும்
                 await sendReportToAllChannels(summaryMsg, { parse_mode: 'Markdown' });
 
                 predictionCount = 0;
@@ -304,7 +302,6 @@ async function fetchWinGoData() {
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-            // இந்த பிரடிக்ஷன் மெசேஜ் பிரடிக்ஷன் சேனலுக்கு மட்டும் செல்லும் (புதிய சேனலுக்குகாது)
             await sendPredictionToChannels(msg, { parse_mode: 'Markdown' });
 
             lastSentPeriod = nextPeriod;
