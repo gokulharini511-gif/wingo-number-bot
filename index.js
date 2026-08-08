@@ -1,3 +1,4 @@
+
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
@@ -31,7 +32,7 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     await safeSendMessage(CHANNEL_ID, "🚀 **WinGo 30S Engine Live...**", { parse_mode: 'Markdown' });
     
-    // Updated setInterval to 500ms
+    // Set Interval updated to 500ms
     setInterval(exact2SecEngine, 500);
 });
 
@@ -82,10 +83,10 @@ async function exact2SecEngine() {
         let now = new Date();
         let secondInCycle = now.getUTCSeconds() % 30;
 
+        // 1. Fetch History with 2000ms Timeout
         if (secondInCycle <= 3) {
             for (let url of API_ENDPOINTS) {
                 try {
-                    // Updated axios timeout to 2000ms
                     const res = await axios.get(url, { timeout: 2000 });
                     let extracted = res.data?.data?.list || res.data?.list || res.data?.data;
                     if (Array.isArray(extracted) && extracted.length > 0) {
@@ -96,6 +97,7 @@ async function exact2SecEngine() {
             }
         }
 
+        // 2. Trigger Prediction at 28th second
         if (secondInCycle >= 28) {
             let targetPeriod = getExact30SPeriod(30);
 
