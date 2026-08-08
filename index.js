@@ -224,7 +224,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **NEXT LEVEL PARTHU KURU (MOVING TO LEVEL " + (maintenanceLevel + 1) + ")**";
+                dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **VIDU MAME NEXT PARTHUKIRALAM (MOVING TO LEVEL " + (maintenanceLevel + 1) + ")**";
 
                 maintenanceLevel++; 
             }
