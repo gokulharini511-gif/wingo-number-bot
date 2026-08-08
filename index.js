@@ -308,4 +308,3 @@ process.on('uncaughtException', (err) => console.error('Uncaught Exception:', er
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
 setInterval(fetchWinGoData, 3000);
-```[cite: 1]
