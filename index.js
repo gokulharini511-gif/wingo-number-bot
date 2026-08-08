@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo Ultra Fast 10s Early Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo High Speed Bot Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Ultra Fast 10-Sec Early Engine Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Maximum Speed Engine Live...**", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -64,7 +64,6 @@ function getBetVal(level) {
     return Math.pow(3, level - 1);
 }
 
-// Frequency-Based 2-Number Engine
 function frequencyBasedEngine(history) {
     try {
         let numbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -127,7 +126,7 @@ async function fetchWinGoData() {
     for (let url of API_ENDPOINTS) {
         try {
             const res = await axios.get(url, {
-                timeout: 1500, // Reduced to 1.5s for rapid early response
+                timeout: 1000, 
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
@@ -256,8 +255,8 @@ async function fetchWinGoData() {
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION (10S EARLY TRIGGER)**\n" +
-                      "⚡ **WinGo 30S Ultra Fast Early Engine** ⚡\n" +
+            let msg = "👑 **KING PREDICTION (ULTRA SPEED)**\n" +
+                      "⚡ **WinGo 30S Max Speed Engine** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "📏 **BIG / SMALL:** `" + pred.size + "`\n" +
@@ -282,7 +281,7 @@ async function fetchWinGoData() {
             lastPredictedPeriod = nextPeriod;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedSize = pred.size;
-            console.log("[SUCCESS] 10s Early Processed Period: " + nextPeriod);
+            console.log("[SUCCESS] Max Speed Processed Period: " + nextPeriod);
         }
     } catch (error) {
         console.error('[PROCESS ERROR]:', error.message);
@@ -294,5 +293,5 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// 500ms (0.5 Seconds) Ultra Fast Polling for 10s Early Push
+// High-speed 500ms loop
 setInterval(fetchWinGoData, 500);
