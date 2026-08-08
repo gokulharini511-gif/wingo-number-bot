@@ -17,7 +17,7 @@ const API_ENDPOINTS = [
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo Direct Trend & 6,8 / 0,2 Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Direct Trend Exact Model Active!'));
 
 async function safeSendMessage(chatId, text, options) {
     try {
@@ -29,7 +29,7 @@ async function safeSendMessage(chatId, text, options) {
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
-    await safeSendMessage(CHANNEL_ID, "🚀 **WinGo Direct Trend Bot Live...**", { parse_mode: 'Markdown' });
+    await safeSendMessage(CHANNEL_ID, "🔥 **WINGO 30S DIRECT TREND PREDICTION BOT LIVE** 🔥", { parse_mode: 'Markdown' });
     fetchWinGoData();
 });
 
@@ -43,10 +43,16 @@ let totalWins = 0;
 let totalLosses = 0;
 let totalJackpots = 0;
 let maintenanceLevel = 1;
-let totalProfitLoss = 0;
+let totalProfitLoss = 0.0;
 
 let predictionCount = 0;
 let maxLevelReached = 1;
+
+let levelWins = { 
+    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 
+    7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 
+};
+
 let prediction60History = [];
 
 const levelData = {
@@ -57,7 +63,11 @@ const levelData = {
     5: { name: "₹50", val: 50 },
     6: { name: "₹150", val: 150 },
     7: { name: "₹450", val: 450 },
-    8: { name: "₹1350", val: 1350 }
+    8: { name: "₹1350", val: 1350 },
+    9: { name: "₹4050", val: 4050 },
+    10: { name: "₹12150", val: 12150 },
+    11: { name: "₹36450", val: 36450 },
+    12: { name: "₹109350", val: 109350 }
 };
 
 function getBetVal(level) {
@@ -66,11 +76,11 @@ function getBetVal(level) {
 }
 
 function getNumberColor(num) {
-    if ([2, 4, 6, 8].includes(num)) return "RED";
-    if ([1, 3, 7, 9].includes(num)) return "GREEN";
-    if (num === 0) return "RED / VIOLET";
-    if (num === 5) return "GREEN / VIOLET";
-    return "RED";
+    if ([2, 4, 6, 8].includes(num)) return "🔴 RED";
+    if ([1, 3, 7, 9].includes(num)) return "🟢 GREEN";
+    if (num === 0) return "🔴 RED / 🟣 VIOLET";
+    if (num === 5) return "🟢 GREEN / 🟣 VIOLET";
+    return "🔴 RED";
 }
 
 // Direct Trend Engine: Big -> Big (6, 8), Small -> Small (0, 2)
@@ -169,16 +179,20 @@ async function fetchWinGoData() {
             if (isResultHit) {
                 totalWins++;
 
+                if (levelWins[currentLevelExecuted] !== undefined) {
+                    levelWins[currentLevelExecuted]++;
+                } else {
+                    levelWins[currentLevelExecuted] = 1;
+                }
+
                 let winAmount = currentBetVal * 0.98;
                 totalProfitLoss += winAmount;
 
                 if (isNumberHit) {
                     totalJackpots++;
                     dynamicStatusMsg = "🎉 **CONGRATULATIONS (LEVEL " + currentLevelExecuted + " - " + currentBetName + " WIN & JACKPOT!)** 🎉\n🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
-                    prediction60History.unshift({ period: actualPeriod, status: "JK WIN", level: currentLevelExecuted });
                 } else {
                     dynamicStatusMsg = "🎉 **CONGRATULATIONS (LEVEL " + currentLevelExecuted + " - " + currentBetName + " WIN!)** 🎉\n🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
-                    prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                 }
 
                 maintenanceLevel = 1; 
@@ -189,9 +203,7 @@ async function fetchWinGoData() {
 
                 dynamicStatusMsg = "💔 **LOSS (LEVEL " + currentLevelExecuted + " - " + currentBetName + "): " + actualResult + " (" + actualNum + " - " + actualColor + ")**\n⚠️ **MOVING TO LEVEL " + (maintenanceLevel + 1) + "**";
 
-                prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
-
-                if (maintenanceLevel >= 8) {
+                if (maintenanceLevel >= 12) {
                     maintenanceLevel = 1;
                 } else {
                     maintenanceLevel++; 
@@ -204,21 +216,13 @@ async function fetchWinGoData() {
                 let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
-                                 "🏆 **WINS:** " + totalWins + "\n" +
+                                 "🏆 **B/S WINS:** " + totalWins + "\n" +
                                  "💥 **JACKPOTS:** " + totalJackpots + "\n" +
                                  "💔 **LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
-
-                let recent10 = prediction60History.slice(0, 10);
-                recent10.forEach(item => {
-                    let icon = item.status.includes("WIN") ? "✅" : "❌";
-                    summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
-                });
-
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for the next 60 rounds!**";
+                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds!**";
 
                 await safeSendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
@@ -226,9 +230,12 @@ async function fetchWinGoData() {
                 totalWins = 0;
                 totalLosses = 0;
                 totalJackpots = 0;
-                totalProfitLoss = 0;
+                totalProfitLoss = 0.0;
                 maxLevelReached = 1;
-                prediction60History = [];
+                levelWins = { 
+                    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 
+                    7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0 
+                };
             }
         }
 
@@ -240,14 +247,13 @@ async function fetchWinGoData() {
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION**\n" +
-                      "🔥 **WinGo 30S DIRECT TREND (6,8 & 0,2)** 🔥\n" +
+            let msg = "🔥 **WINGO 30S DIRECT TREND PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎲 **BET:** **" + pred.predResult + "**\n" +
                       "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                       "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                      "💰 **BET LEVEL AMT:** **LEVEL " + activeLevel + " (" + currentBetName + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
@@ -255,8 +261,22 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **WINS:** " + totalWins + " | 💥 **JK:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
+                   "🏆 **B/S WINS:** " + totalWins + " | 💥 **JK:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
+                   "━━━━━━━━━━━━━━━━━━━━━\n" +
+                   "🎯 **LIVE LEVEL WINS:**\n" +
+                   "🔹 **LEVEL 1:** " + levelWins[1] + " WINS\n" +
+                   "🔹 **LEVEL 2:** " + levelWins[2] + " WINS\n" +
+                   "🔹 **LEVEL 3:** " + levelWins[3] + " WINS\n" +
+                   "🔹 **LEVEL 4:** " + levelWins[4] + " WINS\n" +
+                   "🔹 **LEVEL 5:** " + levelWins[5] + " WINS\n" +
+                   "🔹 **LEVEL 6:** " + levelWins[6] + " WINS\n" +
+                   "🔹 **LEVEL 7:** " + levelWins[7] + " WINS\n" +
+                   "🔹 **LEVEL 8:** " + levelWins[8] + " WINS\n" +
+                   "🔹 **LEVEL 9:** " + levelWins[9] + " WINS\n" +
+                   "🔹 **LEVEL 10:** " + levelWins[10] + " WINS\n" +
+                   "🔹 **LEVEL 11:** " + levelWins[11] + " WINS\n" +
+                   "🔹 **LEVEL 12:** " + levelWins[12] + " WINS\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
